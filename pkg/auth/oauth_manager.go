@@ -18,6 +18,9 @@ type OAuthManager struct {
 	jwtSecret string
 }
 
+// Keep headroom for cookie name and attributes within common 4096-byte browser limits.
+const maxAuthTokenCookieValueLength = 3800
+
 func NewOAuthManager() *OAuthManager {
 	return &OAuthManager{
 		jwtSecret: common.JwtSecret,
@@ -89,6 +92,17 @@ func (om *OAuthManager) GenerateJWT(user *model.User, refreshToken string) (stri
 		},
 	}
 
+	tokenString, err := om.signJWT(claims)
+	if err != nil {
+		return "", err
+	}
+	if len(tokenString) > maxAuthTokenCookieValueLength {
+		claims.RefreshToken = "" // Drop refresh token from JWT if it exceeds size limits
+	}
+	return om.signJWT(claims)
+}
+
+func (om *OAuthManager) signJWT(claims Claims) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(om.jwtSecret))
 }
