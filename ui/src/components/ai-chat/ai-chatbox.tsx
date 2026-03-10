@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAIChatContext } from '@/contexts/ai-chat-context'
+import * as yaml from 'js-yaml'
 import {
   Bot,
   CheckCircle2,
-  ChevronDown,
   ChevronRight,
-  ChevronUp,
+  Clock,
   Loader2,
+  MessageSquarePlus,
   Send,
   Square,
   Trash2,
@@ -20,7 +21,7 @@ import { useLocation } from 'react-router-dom'
 import remarkGfm from 'remark-gfm'
 
 import { useAIStatus } from '@/lib/api'
-import { ChatMessage, useAIChat } from '@/hooks/use-ai-chat'
+import { ChatMessage, ChatSession, useAIChat } from '@/hooks/use-ai-chat'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -92,6 +93,63 @@ function describeAction(tool: string, args: Record<string, unknown>): string {
   }
 }
 
+function buildToolYamlPreview(
+  tool: string | undefined,
+  args: Record<string, unknown> | undefined
+): string | null {
+  if (!tool || !args) {
+    return null
+  }
+
+  switch (tool) {
+    case 'create_resource':
+    case 'update_resource': {
+      const resourceYaml = args.yaml
+      return typeof resourceYaml === 'string' && resourceYaml.trim()
+        ? resourceYaml.trim()
+        : null
+    }
+    case 'patch_resource': {
+      const patch = args.patch
+      if (typeof patch !== 'string' || !patch.trim()) {
+        return null
+      }
+
+      try {
+        const metadata: Record<string, string> = {}
+        if (typeof args.name === 'string' && args.name.trim()) {
+          metadata.name = args.name.trim()
+        }
+        if (typeof args.namespace === 'string' && args.namespace.trim()) {
+          metadata.namespace = args.namespace.trim()
+        }
+
+        const preview: Record<string, unknown> = {
+          patch: JSON.parse(patch),
+        }
+        if (typeof args.kind === 'string' && args.kind.trim()) {
+          preview.kind = args.kind.trim()
+        }
+        if (Object.keys(metadata).length > 0) {
+          preview.metadata = metadata
+        }
+
+        return yaml
+          .dump(preview, {
+            indent: 2,
+            lineWidth: -1,
+            noRefs: true,
+          })
+          .trim()
+      } catch {
+        return patch.trim()
+      }
+    }
+    default:
+      return null
+  }
+}
+
 function ToolCallMessage({
   message,
   onConfirm,
@@ -101,6 +159,10 @@ function ToolCallMessage({
   onConfirm?: (id: string) => void
   onDeny?: (id: string) => void
 }) {
+  const toolYamlPreview = buildToolYamlPreview(
+    message.toolName,
+    message.toolArgs
+  )
   const [expanded, setExpanded] = useState(false)
   const isPending = message.actionStatus === 'pending'
   const isConfirmed = message.actionStatus === 'confirmed'
@@ -131,7 +193,17 @@ function ToolCallMessage({
           className={`h-3 w-3 transition-transform ${expanded ? 'rotate-90' : ''}`}
         />
       </button>
-      {expanded && message.toolResult && (
+      {expanded && toolYamlPreview && (
+        <div className="mt-1 rounded border bg-muted/40 p-2">
+          <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            YAML
+          </div>
+          <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all text-xs">
+            {toolYamlPreview}
+          </pre>
+        </div>
+      )}
+      {message.toolResult && (
         <pre className="mt-1 max-h-40 overflow-auto rounded bg-muted p-2 text-xs whitespace-pre-wrap break-all">
           {message.toolResult}
         </pre>
@@ -205,7 +277,7 @@ function MessageBubble({
       className={`flex ${isUser ? 'justify-end' : 'justify-start'} mx-3 my-2`}
     >
       <div
-        className={`max-w-[85%] rounded-lg px-3 py-2 text-sm break-words ${
+        className={`max-w-[85%] rounded-lg px-3 py-2 text-sm wrap-break-word ${
           isUser
             ? 'bg-primary text-primary-foreground whitespace-pre-wrap'
             : 'bg-muted text-foreground'
@@ -228,7 +300,7 @@ function MessageBubble({
                 </button>
                 {thinkingExpanded && (
                   <div className="rounded border border-dashed bg-background/60 p-2 text-xs text-muted-foreground">
-                    <div className="whitespace-pre-wrap break-words">
+                    <div className="whitespace-pre-wrap wrap-break-word">
                       {message.thinking || ''}
                     </div>
                   </div>
@@ -243,6 +315,129 @@ function MessageBubble({
               </div>
             )}
           </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function HistoryPanel({
+  history,
+  currentSessionId,
+  onLoadSession,
+  onDeleteSession,
+  onNewSession,
+  onClose,
+}: {
+  history: ChatSession[]
+  currentSessionId: string | null
+  onLoadSession: (id: string) => void
+  onDeleteSession: (id: string) => void
+  onNewSession: () => void
+  onClose: () => void
+}) {
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffDays < 7) return `${diffDays}d ago`
+    return date.toLocaleDateString()
+  }
+
+  return (
+    <div className="absolute inset-0 z-20 flex flex-col bg-background">
+      {/* Header */}
+      <div className="flex h-11 shrink-0 items-center justify-between border-b bg-muted/50 px-3">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <Clock className="h-4 w-4" />
+          Chat History
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={onClose}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* New chat button */}
+      <div className="shrink-0 border-b p-2">
+        <Button
+          variant="outline"
+          className="w-full justify-start gap-2"
+          onClick={() => {
+            onNewSession()
+            onClose()
+          }}
+        >
+          <MessageSquarePlus className="h-4 w-4" />
+          New Chat
+        </Button>
+      </div>
+
+      {/* History list */}
+      <div className="flex-1 overflow-y-auto">
+        {history.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 p-8 text-center">
+            <Clock className="h-8 w-8 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">No chat history yet</p>
+          </div>
+        ) : (
+          <div className="space-y-1 p-2">
+            {history.map((session) => (
+              <div
+                key={session.id}
+                className={`group relative rounded-md border p-2 transition-colors hover:bg-muted ${
+                  currentSessionId === session.id
+                    ? 'border-primary bg-muted'
+                    : 'border-transparent'
+                }`}
+              >
+                <button
+                  className="w-full text-left"
+                  onClick={() => {
+                    onLoadSession(session.id)
+                    onClose()
+                  }}
+                >
+                  <div className="mb-1 line-clamp-2 text-sm font-medium">
+                    {session.title}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{formatDate(session.updatedAt)}</span>
+                    <span>•</span>
+                    <span>{session.messages.length} messages</span>
+                    {session.clusterName && (
+                      <>
+                        <span>•</span>
+                        <span className="truncate">{session.clusterName}</span>
+                      </>
+                    )}
+                  </div>
+                </button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1 h-6 w-6 opacity-0 group-hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDeleteSession(session.id)
+                  }}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -347,28 +542,26 @@ function SuggestedPrompts({
 export function AIChatbox() {
   const { i18n, t } = useTranslation()
   const isMobile = useIsMobile()
-  const {
-    isOpen,
-    isMinimized,
-    openChat,
-    closeChat,
-    minimizeChat,
-    pageContext,
-  } = useAIChatContext()
+  const { isOpen, openChat, closeChat, pageContext } = useAIChatContext()
   const {
     messages,
     isLoading,
+    history,
+    currentSessionId,
     sendMessage,
     executeAction,
     denyAction,
-    clearMessages,
     stopGeneration,
+    loadSession,
+    deleteSession,
+    newSession,
   } = useAIChat()
 
   const { pathname } = useLocation()
   const shouldShowAIChatbox = !/^\/settings\/?$/.test(pathname)
 
   const [input, setInput] = useState('')
+  const [showHistory, setShowHistory] = useState(false)
   const [height, setHeight] = useState(() =>
     Math.round(
       (window.visualViewport?.height ?? window.innerHeight) *
@@ -443,10 +636,10 @@ export function AIChatbox() {
 
   // Focus input when chat opens
   useEffect(() => {
-    if (isOpen && !isMinimized) {
+    if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100)
     }
-  }, [isOpen, isMinimized])
+  }, [isOpen])
 
   const handleSend = useCallback(() => {
     if (!input.trim() || isLoading) return
@@ -474,13 +667,13 @@ export function AIChatbox() {
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
-      if (isMinimized || isMobile) return
+      if (isMobile) return
       heightDragging.current = true
       startY.current = e.clientY
       startH.current = height
       ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
     },
-    [height, isMinimized, isMobile]
+    [height, isMobile]
   )
 
   const onPointerMove = useCallback(
@@ -505,13 +698,13 @@ export function AIChatbox() {
 
   const onWidthPointerDown = useCallback(
     (e: React.PointerEvent) => {
-      if (isMinimized || isMobile) return
+      if (isMobile) return
       widthDragging.current = true
       startX.current = e.clientX
       startW.current = width
       ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
     },
-    [isMinimized, isMobile, width]
+    [isMobile, width]
   )
 
   const onWidthPointerMove = useCallback(
@@ -569,18 +762,16 @@ export function AIChatbox() {
         isMobile
           ? {
               bottom: `calc(env(safe-area-inset-bottom, 0px) + 0.5rem)`,
-              height: isMinimized
-                ? 44
-                : `${MOBILE_DEFAULT_HEIGHT_RATIO * 100}%`,
+              height: `${MOBILE_DEFAULT_HEIGHT_RATIO * 100}%`,
             }
           : {
               width: desktopWidth,
-              height: isMinimized ? 44 : desktopHeight,
+              height: desktopHeight,
             }
       }
     >
       {/* Resize handle */}
-      {!isMinimized && !isMobile && (
+      {!isMobile && (
         <div
           className="absolute -top-1 left-4 right-4 h-2 cursor-ns-resize z-10"
           onPointerDown={onPointerDown}
@@ -588,7 +779,7 @@ export function AIChatbox() {
           onPointerUp={onPointerUp}
         />
       )}
-      {!isMinimized && !isMobile && (
+      {!isMobile && (
         <div
           className="absolute -left-1 top-11 bottom-0 w-2 cursor-ew-resize z-10"
           onPointerDown={onWidthPointerDown}
@@ -599,13 +790,10 @@ export function AIChatbox() {
 
       {/* Header */}
       <div className="flex h-11 shrink-0 items-center justify-between rounded-t-lg border-b bg-muted/50 px-3">
-        <button
-          className="flex items-center gap-2 text-sm font-semibold text-foreground hover:opacity-70 transition-opacity"
-          onClick={() => (isMinimized ? openChat() : minimizeChat())}
-        >
+        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <Bot className="h-4 w-4" />
           AI Assistant
-        </button>
+        </div>
 
         <div className="flex items-center gap-0.5">
           <Tooltip>
@@ -614,15 +802,13 @@ export function AIChatbox() {
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7"
-                onClick={clearMessages}
+                onClick={() => setShowHistory(true)}
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Clock className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="top">Clear chat</TooltipContent>
+            <TooltipContent side="top">Chat history</TooltipContent>
           </Tooltip>
-
-          <Separator orientation="vertical" className="mx-0.5 h-4" />
 
           <Tooltip>
             <TooltipTrigger asChild>
@@ -630,19 +816,15 @@ export function AIChatbox() {
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7"
-                onClick={() => (isMinimized ? openChat() : minimizeChat())}
+                onClick={newSession}
               >
-                {isMinimized ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
+                <MessageSquarePlus className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="top">
-              {isMinimized ? 'Restore' : 'Minimize'}
-            </TooltipContent>
+            <TooltipContent side="top">New chat</TooltipContent>
           </Tooltip>
+
+          <Separator orientation="vertical" className="mx-0.5 h-4" />
 
           <Tooltip>
             <TooltipTrigger asChild>
@@ -661,83 +843,93 @@ export function AIChatbox() {
       </div>
 
       {/* Chat content */}
-      {!isMinimized && (
-        <>
-          {/* Messages area */}
-          <div className="flex-1 overflow-y-auto min-h-0 scrollbar-hide">
-            {messages.length === 0 ? (
-              <SuggestedPrompts
-                pageContext={pageContext}
-                onSelect={(prompt) => {
-                  setInput(prompt)
-                  setTimeout(() => inputRef.current?.focus(), 50)
-                }}
-              />
+      <>
+        {/* History panel overlay */}
+        {showHistory && (
+          <HistoryPanel
+            history={history}
+            currentSessionId={currentSessionId}
+            onLoadSession={loadSession}
+            onDeleteSession={deleteSession}
+            onNewSession={newSession}
+            onClose={() => setShowHistory(false)}
+          />
+        )}
+
+        {/* Messages area */}
+        <div className="flex-1 overflow-y-auto min-h-0 scrollbar-hide">
+          {messages.length === 0 ? (
+            <SuggestedPrompts
+              pageContext={pageContext}
+              onSelect={(prompt) => {
+                setInput(prompt)
+                setTimeout(() => inputRef.current?.focus(), 50)
+              }}
+            />
+          ) : (
+            <>
+              {messages.map((msg) => (
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                  onConfirm={executeAction}
+                  onDeny={denyAction}
+                />
+              ))}
+              {isLoading &&
+                !messages.find((m) => m.role === 'tool' && !m.toolResult) && (
+                  <div className="mx-3 my-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Bot className="h-3.5 w-3.5 animate-pulse" />
+                    <span className="ai-thinking-dots">
+                      <span />
+                      <span />
+                      <span />
+                    </span>
+                  </div>
+                )}
+              <div ref={messagesEndRef} />
+            </>
+          )}
+        </div>
+
+        {/* Input area */}
+        <div className="shrink-0 border-t p-2">
+          <div className="flex items-end gap-2">
+            <textarea
+              ref={inputRef}
+              className="flex-1 resize-none rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              placeholder="Ask about your cluster..."
+              rows={1}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={isLoading}
+            />
+            {isLoading ? (
+              <Button
+                size="icon"
+                variant="outline"
+                className="h-9 w-9 shrink-0"
+                onClick={stopGeneration}
+              >
+                <Square className="h-3.5 w-3.5" />
+              </Button>
             ) : (
-              <>
-                {messages.map((msg) => (
-                  <MessageBubble
-                    key={msg.id}
-                    message={msg}
-                    onConfirm={executeAction}
-                    onDeny={denyAction}
-                  />
-                ))}
-                {isLoading &&
-                  !messages.find((m) => m.role === 'tool' && !m.toolResult) && (
-                    <div className="mx-3 my-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Bot className="h-3.5 w-3.5 animate-pulse" />
-                      <span className="ai-thinking-dots">
-                        <span />
-                        <span />
-                        <span />
-                      </span>
-                    </div>
-                  )}
-                <div ref={messagesEndRef} />
-              </>
+              <Button
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                onClick={handleSend}
+                disabled={!input.trim()}
+              >
+                <Send className="h-3.5 w-3.5" />
+              </Button>
             )}
           </div>
-
-          {/* Input area */}
-          <div className="shrink-0 border-t p-2">
-            <div className="flex items-end gap-2">
-              <textarea
-                ref={inputRef}
-                className="flex-1 resize-none rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                placeholder="Ask about your cluster..."
-                rows={1}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={isLoading}
-              />
-              {isLoading ? (
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-9 w-9 shrink-0"
-                  onClick={stopGeneration}
-                >
-                  <Square className="h-3.5 w-3.5" />
-                </Button>
-              ) : (
-                <Button
-                  size="icon"
-                  className="h-9 w-9 shrink-0"
-                  onClick={handleSend}
-                  disabled={!input.trim()}
-                >
-                  <Send className="h-3.5 w-3.5" />
-                </Button>
-              )}
-            </div>
-            <p className="mt-1 text-center text-[10px] leading-4 text-muted-foreground">
-              {t('aiChat.disclaimer')}
-            </p>
-          </div>
-        </>
-      )}
+          <p className="mt-1 text-center text-[10px] leading-4 text-muted-foreground">
+            {t('aiChat.disclaimer')}
+          </p>
+        </div>
+      </>
     </div>
   )
 }
