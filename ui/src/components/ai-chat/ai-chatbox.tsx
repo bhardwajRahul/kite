@@ -203,7 +203,7 @@ function ToolCallMessage({
           </pre>
         </div>
       )}
-      {message.toolResult && (
+      {expanded && message.toolResult && (
         <pre className="mt-1 max-h-40 overflow-auto rounded bg-muted p-2 text-xs whitespace-pre-wrap break-all">
           {message.toolResult}
         </pre>
