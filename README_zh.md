@@ -22,8 +22,7 @@ _一个现代 Kubernetes Dashboard_
 
 Kite是一款轻量级、现代化的Kubernetes仪表板工具，它将实时可观测性、多集群管理和资源管理功能，以及企业级用户管理功能（如OAuth、RBAC和审计日志功能），以及AI代理功能整合到一个工作空间中。它不仅仅是一个工具，而更像是一个平台。
 
-![Dashboard Overview](docs/screenshots/overview.png)
-_集群概览，包含实时指标和资源统计_
+<img width="1586" height="1167" alt="image" src="https://github.com/user-attachments/assets/a88a63b7-5b71-444d-8d98-66f147a68ef7" />
 
 ## ✨ 功能特性
 
