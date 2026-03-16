@@ -17,7 +17,7 @@ export function CRDListPage() {
       columnHelper.accessor('metadata.name', {
         header: 'Name',
         cell: ({ row }) => (
-          <div className="font-medium text-blue-500 hover:underline">
+          <div className="font-medium app-link">
             <Link to={`/crds/${row.original.metadata!.name}`}>
               {row.original.metadata!.name}
             </Link>

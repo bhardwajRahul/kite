@@ -10,17 +10,13 @@ export function Footer() {
             {t('login.footer', { year: new Date().getFullYear() })}
           </p>
           <div className="flex space-x-6 text-sm text-gray-500">
-            <a
-              href="https://kite.zzde.com"
-              target="_blank"
-              className="hover:text-gray-700 transition-colors"
-            >
+            <a href="https://kite.zzde.me" target="_blank" className="app-link">
               {t('login.documentation')}
             </a>
             <a
               href="https://github.com/zxh326/kite"
               target="_blank"
-              className="hover:text-gray-700 transition-colors"
+              className="app-link"
             >
               GitHub
             </a>

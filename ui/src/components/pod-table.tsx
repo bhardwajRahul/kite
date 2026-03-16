@@ -30,7 +30,7 @@ export function PodTable(props: {
         cell: (value: unknown) => {
           const meta = value as Pod['metadata']
           return (
-            <div className="font-medium text-blue-500 hover:underline">
+            <div className="font-medium app-link">
               <Link to={`/pods/${meta!.namespace}/${meta!.name}`}>
                 {meta!.name}
               </Link>
@@ -108,10 +108,7 @@ export function PodTable(props: {
               header: 'Node',
               accessor: (pod: Pod) => pod.spec?.nodeName || '-',
               cell: (value: unknown) => (
-                <Link
-                  to={`/nodes/${value}`}
-                  className="text-blue-600 hover:text-blue-800 hover:underline"
-                >
+                <Link to={`/nodes/${value}`} className="app-link">
                   {value as string}
                 </Link>
               ),

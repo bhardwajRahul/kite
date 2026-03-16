@@ -182,10 +182,7 @@ export function ServiceDetail(props: { name: string; namespace?: string }) {
                                 return 'No owner'
                               }
                               return (
-                                <Link
-                                  to={ownerInfo.path}
-                                  className="text-blue-600 hover:text-blue-800 hover:underline"
-                                >
+                                <Link to={ownerInfo.path} className="app-link">
                                   {ownerInfo.kind}/{ownerInfo.name}
                                 </Link>
                               )
@@ -207,7 +204,7 @@ export function ServiceDetail(props: { name: string; namespace?: string }) {
                                   )}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="font-mono text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
+                                  className="font-mono app-link inline-flex items-center gap-1"
                                 >
                                   {(port.name || port.protocol) &&
                                     `${port.name || port.protocol}:`}

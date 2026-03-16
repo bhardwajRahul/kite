@@ -25,7 +25,7 @@ export function CronJobListPage() {
       columnHelper.accessor('metadata.name', {
         header: t('common.name'),
         cell: ({ row }) => (
-          <div className="font-medium text-blue-500 hover:underline">
+          <div className="font-medium app-link">
             <Link
               to={`/cronjobs/${row.original.metadata!.namespace}/${
                 row.original.metadata!.name

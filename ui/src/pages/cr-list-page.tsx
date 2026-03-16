@@ -56,7 +56,7 @@ export function CRListPage() {
             : `/crds/${crd}/${resource.metadata.name}`
 
           return (
-            <div className="font-medium text-blue-500 hover:underline">
+            <div className="font-medium app-link">
               <Link to={path}>{resource.metadata.name}</Link>
             </div>
           )

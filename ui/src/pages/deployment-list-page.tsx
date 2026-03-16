@@ -25,7 +25,7 @@ export function DeploymentListPage() {
       columnHelper.accessor('metadata.name', {
         header: t('common.name'),
         cell: ({ row }) => (
-          <div className="font-medium text-blue-500 hover:underline">
+          <div className="font-medium app-link">
             <Link
               to={`/deployments/${row.original.metadata!.namespace}/${
                 row.original.metadata!.name

@@ -18,7 +18,7 @@ export function PVListPage() {
       columnHelper.accessor('metadata.name', {
         header: t('common.name'),
         cell: ({ row }) => (
-          <div className="font-medium text-blue-500 hover:underline">
+          <div className="font-medium app-link">
             <Link to={`/persistentvolumes/${row.original.metadata!.name}`}>
               {row.original.metadata!.name}
             </Link>
@@ -55,7 +55,7 @@ export function PVListPage() {
           const scName = getValue()
           if (scName) {
             return (
-              <div className="font-medium text-blue-500 hover:underline">
+              <div className="font-medium app-link">
                 <Link to={`/storageclasses/${scName}`}>{scName}</Link>
               </div>
             )
@@ -90,7 +90,7 @@ export function PVListPage() {
           const claimRef = getValue()
           if (claimRef && claimRef.name && claimRef.namespace) {
             return (
-              <div className="font-medium text-blue-500 hover:underline">
+              <div className="font-medium app-link">
                 <Link
                   to={`/persistentvolumeclaims/${claimRef.namespace}/${claimRef.name}`}
                 >

@@ -37,10 +37,7 @@ export function EventListPage() {
             return (
               <div className="flex flex-col gap-0.5">
                 <div className="text-xs text-muted-foreground">{kind}</div>
-                <Link
-                  to={link}
-                  className="font-medium text-blue-500 hover:underline text-sm"
-                >
+                <Link to={link} className="font-medium app-link text-sm">
                   {name}
                 </Link>
               </div>

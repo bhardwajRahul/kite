@@ -16,7 +16,7 @@ export function ConfigMapListPage() {
       columnHelper.accessor('metadata.name', {
         header: 'Name',
         cell: ({ row }) => (
-          <div className="font-medium text-blue-500 hover:underline">
+          <div className="font-medium app-link">
             <Link
               to={`/configmaps/${row.original.metadata!.namespace}/${
                 row.original.metadata!.name

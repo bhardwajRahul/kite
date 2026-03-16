@@ -15,7 +15,7 @@ export function GatewayListPage() {
       columnHelper.accessor('metadata.name', {
         header: 'Name',
         cell: ({ row }) => (
-          <div className="font-medium text-blue-500 hover:underline">
+          <div className="font-medium app-link">
             <Link
               to={`/gateways/${row.original.metadata!.namespace}/${row.original.metadata!.name}`}
             >

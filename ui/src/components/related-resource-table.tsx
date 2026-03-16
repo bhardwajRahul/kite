@@ -90,9 +90,7 @@ function RelatedResourceCell({ rs }: { rs: RelatedResources }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <div className="font-medium text-blue-500 hover:underline cursor-pointer">
-          {rs.name}
-        </div>
+        <div className="font-medium app-link cursor-pointer">{rs.name}</div>
       </DialogTrigger>
       <DialogContent className="!max-w-[60%] !h-[80%] flex flex-col">
         <DialogHeader className="flex flex-row justify-between items-center">

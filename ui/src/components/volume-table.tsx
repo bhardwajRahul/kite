@@ -50,7 +50,7 @@ export function VolumeTable({
       return (
         <Link
           to={`/persistentvolumeclaims/${namespace}/${volume.persistentVolumeClaim.claimName}`}
-          className="text-blue-600 hover:underline"
+          className="app-link"
         >
           {volume.persistentVolumeClaim.claimName}
         </Link>
@@ -60,7 +60,7 @@ export function VolumeTable({
       return (
         <Link
           to={`/configmaps/${namespace}/${volume.configMap.name}`}
-          className="text-blue-600 hover:underline"
+          className="app-link"
         >
           {volume.configMap.name || 'N/A'}
         </Link>
@@ -70,7 +70,7 @@ export function VolumeTable({
       return (
         <Link
           to={`/secrets/${namespace}/${volume.secret.secretName}`}
-          className="text-blue-600 hover:underline"
+          className="app-link"
         >
           {volume.secret.secretName || 'N/A'}
         </Link>

@@ -28,7 +28,7 @@ export function PodListPage() {
       columnHelper.accessor('metadata.name', {
         header: t('common.name'),
         cell: ({ row }) => (
-          <div className="font-medium text-blue-500 hover:underline">
+          <div className="font-medium app-link">
             <Link
               to={`/pods/${row.original.metadata!.namespace}/${
                 row.original.metadata!.name
@@ -109,7 +109,7 @@ export function PodListPage() {
         cell: ({ row }) => {
           if (row.original.spec?.nodeName) {
             return (
-              <div className="font-medium text-blue-500 hover:underline">
+              <div className="font-medium app-link">
                 <Link to={`/nodes/${row.original.spec?.nodeName}`}>
                   {row.original.spec?.nodeName}
                 </Link>

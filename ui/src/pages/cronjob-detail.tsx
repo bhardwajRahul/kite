@@ -162,7 +162,7 @@ export function CronJobDetail(props: { namespace: string; name: string }) {
           return (
             <Link
               to={`/jobs/${job.metadata?.namespace}/${job.metadata?.name}`}
-              className="text-blue-600 hover:underline"
+              className="app-link"
             >
               {job.metadata?.name}
             </Link>

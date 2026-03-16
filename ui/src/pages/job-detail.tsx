@@ -291,10 +291,7 @@ export function JobDetail(props: { namespace: string; name: string }) {
                                 return 'No owner'
                               }
                               return (
-                                <Link
-                                  to={ownerInfo.path}
-                                  className="text-blue-600 hover:text-blue-800 hover:underline"
-                                >
+                                <Link to={ownerInfo.path} className="app-link">
                                   {ownerInfo.kind}/{ownerInfo.name}
                                 </Link>
                               )

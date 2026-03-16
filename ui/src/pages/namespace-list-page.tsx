@@ -17,7 +17,7 @@ export function NamespaceListPage() {
       columnHelper.accessor('metadata.name', {
         header: t('common.name'),
         cell: ({ row }) => (
-          <div className="font-medium text-blue-500 hover:underline">
+          <div className="font-medium app-link">
             <Link to={`/namespaces/${row.original.metadata!.name}`}>
               {row.original.metadata!.name}
             </Link>

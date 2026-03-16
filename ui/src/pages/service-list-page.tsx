@@ -20,7 +20,7 @@ export function ServiceListPage() {
       columnHelper.accessor('metadata.name', {
         header: t('common.name'),
         cell: ({ row }) => (
-          <div className="font-medium text-blue-500 hover:underline">
+          <div className="font-medium app-link">
             <Link
               to={`/services/${row.original.metadata!.namespace}/${
                 row.original.metadata!.name

@@ -113,6 +113,12 @@ samp {
   }
 }
 
+@layer components {
+  .app-link {
+    @apply text-primary underline-offset-4 hover:text-primary/80 hover:underline;
+  }
+}
+
 /* Breathing animation for log viewer connection indicator */
 @keyframes breathing {
   0%,

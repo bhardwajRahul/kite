@@ -19,7 +19,7 @@ export function PVCListPage() {
       columnHelper.accessor('metadata.name', {
         header: t('common.name'),
         cell: ({ row }) => (
-          <div className="font-medium text-blue-500 hover:underline">
+          <div className="font-medium app-link">
             <Link
               to={`/persistentvolumeclaims/${row.original.metadata!.namespace}/${
                 row.original.metadata!.name
@@ -57,7 +57,7 @@ export function PVCListPage() {
           const volumeName = getValue()
           if (volumeName) {
             return (
-              <div className="font-medium text-blue-500 hover:underline">
+              <div className="font-medium app-link">
                 <Link to={`/persistentvolumes/${volumeName}`}>
                   {volumeName}
                 </Link>
@@ -74,7 +74,7 @@ export function PVCListPage() {
           const scName = getValue()
           if (scName) {
             return (
-              <div className="font-medium text-blue-500 hover:underline">
+              <div className="font-medium app-link">
                 <Link to={`/storageclasses/${scName}`}>{scName}</Link>
               </div>
             )

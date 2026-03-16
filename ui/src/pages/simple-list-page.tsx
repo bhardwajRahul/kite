@@ -28,7 +28,7 @@ export function SimpleListPage<T extends keyof ResourceTypeMap>({
       columnHelper.accessor((row) => row.metadata?.name, {
         header: 'Name',
         cell: ({ row }) => (
-          <div className="font-medium text-blue-500 hover:underline">
+          <div className="font-medium app-link">
             <Link
               to={`/${resourceType}${isClusterScope ? '' : `/${row.original.metadata!.namespace}`}/${row.original.metadata!.name}`}
             >

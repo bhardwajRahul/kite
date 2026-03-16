@@ -285,7 +285,7 @@ export function PodDetail(props: { namespace: string; name: string }) {
                           {pod.spec?.nodeName ? (
                             <Link
                               to={`/nodes/${pod.spec.nodeName}`}
-                              className="text-blue-600 hover:text-blue-800 hover:underline"
+                              className="app-link"
                             >
                               {pod.spec.nodeName}
                             </Link>
@@ -353,10 +353,7 @@ export function PodDetail(props: { namespace: string; name: string }) {
                                 return 'No owner'
                               }
                               return (
-                                <Link
-                                  to={ownerInfo.path}
-                                  className="text-blue-600 hover:text-blue-800 hover:underline"
-                                >
+                                <Link to={ownerInfo.path} className="app-link">
                                   {ownerInfo.kind}/{ownerInfo.name}
                                 </Link>
                               )
@@ -381,7 +378,7 @@ export function PodDetail(props: { namespace: string; name: string }) {
                                   )}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="font-mono text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
+                                  className="font-mono app-link inline-flex items-center gap-1"
                                 >
                                   {port.name && `${port.name}:`}
                                   {port.containerPort}
