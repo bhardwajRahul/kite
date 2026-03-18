@@ -4,6 +4,7 @@ import { ResourceType } from '@/types/api'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { Card, CardContent } from '@/components/ui/card'
 
+import { ConfigMapDetail } from './configmap-detail'
 import { CronJobDetail } from './cronjob-detail'
 import { DaemonSetDetail } from './daemonset-detail'
 import { DeploymentDetail } from './deployment-detail'
@@ -68,6 +69,8 @@ export function ResourceDetail() {
       return <CronJobDetail namespace={namespace!} name={name} />
     case 'secrets':
       return <SecretDetail namespace={namespace!} name={name} />
+    case 'configmaps':
+      return <ConfigMapDetail namespace={namespace!} name={name} />
     case 'nodes':
       return <NodeDetail name={name} />
     case 'services':
