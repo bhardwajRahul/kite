@@ -20,15 +20,6 @@ export default defineConfig({
   build: {
     outDir: '../static',
     emptyOutDir: true,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          monaco: ['monaco-editor'],
-          lodash: ['lodash'],
-          recharts: ['recharts'],
-        },
-      },
-    },
   },
   server: {
     watch: {
