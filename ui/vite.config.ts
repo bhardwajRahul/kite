@@ -20,6 +20,15 @@ export default defineConfig({
   build: {
     outDir: '../static',
     emptyOutDir: true,
+    chunkSizeWarningLimit: 3000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          recharts: ['recharts'],
+          lodash: ['lodash'],
+        },
+      },
+    },
   },
   server: {
     watch: {

@@ -19,14 +19,10 @@ import { ClusterProvider } from './contexts/cluster-context'
 import { TerminalProvider, useTerminal } from './contexts/terminal-context'
 import { useCluster } from './hooks/use-cluster'
 import { apiClient } from './lib/api-client'
-
-const appModules = import.meta.glob(['./components/floating-terminal.tsx'])
+import { prefetchMonaco } from './lib/monaco-runtime'
 
 const FloatingTerminal = lazy(async () => {
-  const module = (await appModules[
-    './components/floating-terminal.tsx'
-  ]()) as typeof import('./components/floating-terminal')
-
+  const module = await import('./components/floating-terminal')
   return { default: module.FloatingTerminal }
 })
 
@@ -102,6 +98,10 @@ function AppContent() {
 }
 
 function App() {
+  useEffect(() => {
+    prefetchMonaco()
+  }, [])
+
   return (
     <TerminalProvider>
       <ClusterProvider>
