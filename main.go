@@ -240,7 +240,7 @@ func main() {
 	}
 	r.Use(gin.Recovery())
 	r.Use(middleware.Logger())
-	r.Use(middleware.CORS())
+	r.Use(middleware.DevCORS(common.CORSAllowedOrigins))
 	model.InitDB()
 	if _, err := model.GetGeneralSetting(); err != nil {
 		klog.Warningf("Failed to load general setting: %v", err)
