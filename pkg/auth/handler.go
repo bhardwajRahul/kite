@@ -245,7 +245,7 @@ func (h *AuthHandler) RequireAPIKeyAuth(c *gin.Context, token string) {
 		c.Abort()
 		return
 	}
-	apikey, err := model.GetUserByID(dbID)
+	apikey, err := model.GetUserByIDCached(dbID)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "Invalid API key",
@@ -321,7 +321,7 @@ func (h *AuthHandler) RequireAuth() gin.HandlerFunc {
 				return
 			}
 		}
-		user, err := model.GetUserByID(uint64(claims.UserID))
+		user, err := model.GetUserByIDCached(uint64(claims.UserID))
 		if err != nil || !user.Enabled {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error": "user not found",
