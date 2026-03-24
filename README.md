@@ -170,7 +170,7 @@ Thank you for your support! ❤️
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [contributing guidelines](https://kite.zzde.me/faq.html#how-can-i-contribute-to-kite) for details on how to get involved.
+We welcome contributions! Please see our [contributing guidelines](./CONTRIBUTING.md) for details on how to get involved.
 
 ## 📄 License
 

@@ -170,7 +170,7 @@ docker run -d -p 8080:8080 -v ./data:/data -e DB_DSN=/data/db.sqlite ghcr.io/kit
 
 ## 🤝 贡献
 
-我们欢迎贡献！请参阅我们的[贡献指南](https://kite.zzde.me/zh/faq.html#%E6%88%91%E5%9C%A8%E5%93%AA%E9%87%8C%E5%8F%AF%E4%BB%A5%E8%8E%B7%E5%BE%97%E5%B8%AE%E5%8A%A9)了解如何参与。
+我们欢迎贡献！请参阅我们的[贡献指南](./CONTRIBUTING.md)了解如何参与。
 
 ## 📄 许可证
 
