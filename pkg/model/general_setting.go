@@ -1,11 +1,14 @@
 package model
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"strings"
 
 	"github.com/zxh326/kite/pkg/common"
 	"gorm.io/gorm"
+	"k8s.io/klog/v2"
 )
 
 const DefaultGeneralAIModel = "gpt-4o-mini"
@@ -38,6 +41,7 @@ type GeneralSetting struct {
 	NodeTerminalImage  string       `json:"nodeTerminalImage" gorm:"column:node_terminal_image;type:varchar(255);not null;default:'busybox:latest'"`
 	EnableAnalytics    bool         `json:"enableAnalytics" gorm:"column:enable_analytics;type:boolean;not null;default:true"`
 	EnableVersionCheck bool         `json:"enableVersionCheck" gorm:"column:enable_version_check;type:boolean;not null;default:true"`
+	JWTSecret          SecretString `json:"-" gorm:"column:jwt_secret;type:text"`
 }
 
 func NormalizeGeneralAIProvider(provider string) string {
@@ -91,8 +95,13 @@ func GetGeneralSetting() (*GeneralSetting, error) {
 			setting.NodeTerminalImage = defaultNodeTerminalImage
 			updates["node_terminal_image"] = defaultNodeTerminalImage
 		}
+		if err := ensureJWTSecret(&setting, updates); err != nil {
+			return nil, err
+		}
 		if len(updates) > 0 {
-			_ = DB.Model(&setting).Updates(updates).Error
+			if err := DB.Model(&setting).Updates(updates).Error; err != nil {
+				return nil, err
+			}
 		}
 		applyRuntimeGeneralSetting(&setting)
 		return &setting, nil
@@ -112,6 +121,9 @@ func GetGeneralSetting() (*GeneralSetting, error) {
 		NodeTerminalImage:  DefaultGeneralNodeTerminalImageValue(),
 		EnableAnalytics:    common.EnableAnalytics,
 		EnableVersionCheck: common.EnableVersionCheck,
+	}
+	if err := ensureJWTSecret(&setting, nil); err != nil {
+		return nil, err
 	}
 	if err := DB.Create(&setting).Error; err != nil {
 		return nil, err
@@ -141,4 +153,44 @@ func applyRuntimeGeneralSetting(setting *GeneralSetting) {
 	}
 	common.EnableAnalytics = setting.EnableAnalytics
 	common.EnableVersionCheck = setting.EnableVersionCheck
+}
+
+func ensureJWTSecret(setting *GeneralSetting, updates map[string]interface{}) error {
+	storedSecret := strings.TrimSpace(string(setting.JWTSecret))
+	configuredSecret := strings.TrimSpace(common.JwtSecret)
+
+	switch {
+	case configuredSecret != "" && configuredSecret != common.DefaultJWTSecret:
+		if storedSecret != configuredSecret {
+			setting.JWTSecret = SecretString(configuredSecret)
+			if updates != nil {
+				updates["jwt_secret"] = setting.JWTSecret
+			}
+		}
+		common.JwtSecret = configuredSecret
+		return nil
+	case storedSecret != "" && storedSecret != common.DefaultJWTSecret:
+		common.JwtSecret = storedSecret
+		return nil
+	default:
+		generatedSecret, err := generateJWTSecret()
+		if err != nil {
+			return err
+		}
+		setting.JWTSecret = SecretString(generatedSecret)
+		common.JwtSecret = generatedSecret
+		if updates != nil {
+			updates["jwt_secret"] = setting.JWTSecret
+		}
+		klog.Warningf("JWT secret is using the insecure default value, generated a random secret and stored it in general setting")
+		return nil
+	}
+}
+
+func generateJWTSecret() (string, error) {
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(buf), nil
 }

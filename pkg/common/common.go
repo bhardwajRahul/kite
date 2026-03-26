@@ -10,6 +10,7 @@ import (
 
 const (
 	JWTExpirationSeconds = 24 * 60 * 60 // 24 hours
+	DefaultJWTSecret     = "kite-default-jwt-secret-key-change-in-production"
 
 	NodeTerminalPodName    = "kite-node-terminal-agent"
 	KubectlTerminalPodName = "kite-kubectl-agent"
@@ -24,7 +25,7 @@ const (
 
 var (
 	Port            = "8080"
-	JwtSecret       = "kite-default-jwt-secret-key-change-in-production"
+	JwtSecret       = DefaultJWTSecret
 	EnableAnalytics = false
 	Host            = ""
 	Base            = ""
