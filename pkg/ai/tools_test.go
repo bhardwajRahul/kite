@@ -3,6 +3,8 @@ package ai
 import (
 	"testing"
 
+	"github.com/zxh326/kite/pkg/cluster"
+	"github.com/zxh326/kite/pkg/prometheus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -53,5 +55,24 @@ func TestResourceMatchesInputCRDVariants(t *testing.T) {
 
 	if resourceMatchesInput("crd.apps", "apiextensions.k8s.io", resource) {
 		t.Fatalf("expected no match for crd.apps")
+	}
+}
+
+func TestToolDefinitionsPrometheusToggle(t *testing.T) {
+	hasPrometheusTool := func(defs []agentToolDefinition) bool {
+		for _, def := range defs {
+			if def.Name == "query_prometheus" {
+				return true
+			}
+		}
+		return false
+	}
+
+	if got := hasPrometheusTool(toolDefinitions(nil)); got {
+		t.Fatalf("expected no Prometheus tool when client is absent")
+	}
+
+	if got := hasPrometheusTool(toolDefinitions(&cluster.ClientSet{PromClient: &prometheus.Client{}})); !got {
+		t.Fatalf("expected Prometheus tool when client is present")
 	}
 }

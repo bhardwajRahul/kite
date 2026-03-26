@@ -14,7 +14,13 @@ import (
 )
 
 type Client struct {
-	client v1.API
+	client promAPI
+}
+
+type promAPI interface {
+	Config(ctx context.Context) (v1.ConfigResult, error)
+	Query(ctx context.Context, query string, ts time.Time, opts ...v1.Option) (model.Value, v1.Warnings, error)
+	QueryRange(ctx context.Context, query string, r v1.Range, opts ...v1.Option) (model.Value, v1.Warnings, error)
 }
 
 type ResourceMetrics struct {
@@ -202,13 +208,13 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 }
 
 // Query executes an instant query against Prometheus
-func (c *Client) Query(ctx context.Context, query string, ts time.Time) (model.Value, v1.Warnings, error) {
-	return c.client.Query(ctx, query, ts)
+func (c *Client) Query(ctx context.Context, query string, ts time.Time, opts ...v1.Option) (model.Value, v1.Warnings, error) {
+	return c.client.Query(ctx, query, ts, opts...)
 }
 
 // QueryRange executes a range query against Prometheus
-func (c *Client) QueryRange(ctx context.Context, query string, r v1.Range) (model.Value, v1.Warnings, error) {
-	return c.client.QueryRange(ctx, query, r)
+func (c *Client) QueryRange(ctx context.Context, query string, r v1.Range, opts ...v1.Option) (model.Value, v1.Warnings, error) {
+	return c.client.QueryRange(ctx, query, r, opts...)
 }
 
 func (c *Client) GetCPUUsage(ctx context.Context, namespace, podNamePrefix, container string, timeRange, step time.Duration) ([]UsageDataPoint, error) {

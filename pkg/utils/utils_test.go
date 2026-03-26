@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/zxh326/kite/pkg/common"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
@@ -59,6 +60,22 @@ func TestInjectKiteBase(t *testing.T) {
 	})
 }
 
+func TestInjectAnalytics(t *testing.T) {
+	html := `<html><head><title>kite</title></head><body></body></html>`
+
+	got := InjectAnalytics(html)
+	if !strings.Contains(got, `https://cloud.umami.is/script.js`) {
+		t.Fatalf("expected analytics script to be injected: %s", got)
+	}
+	if strings.Index(got, `https://cloud.umami.is/script.js`) > strings.Index(got, `</head>`) {
+		t.Fatalf("expected analytics script before </head>: %s", got)
+	}
+
+	if unchanged := InjectAnalytics("<html><body></body></html>"); unchanged != "<html><body></body></html>" {
+		t.Fatalf("InjectAnalytics() = %q, want unchanged input", unchanged)
+	}
+}
+
 func TestGetImageRegistryAndRepo(t *testing.T) {
 	testcase := []struct {
 		image    string
@@ -101,5 +118,65 @@ func TestGenerateNodeAgentName(t *testing.T) {
 		if errs := validation.IsDNS1123Subdomain(podName); len(errs) > 0 {
 			t.Errorf("GenerateNodeAgentName(%q) = %q, invalid DNS subdomain: %v", tc.nodeName, podName, errs)
 		}
+	}
+}
+
+func TestToEnvName(t *testing.T) {
+	testCases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "hyphen and dot", in: "a-b.c", want: "A_B_C"},
+		{name: "slash", in: "kube/system", want: "KUBE_SYSTEM"},
+		{name: "mixed case", in: "KiteBase", want: "KITEBASE"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ToEnvName(tc.in)
+			if got != tc.want {
+				t.Fatalf("ToEnvName(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestGenerateKubectlAgentName(t *testing.T) {
+	testCases := []struct {
+		name     string
+		username string
+		prefix   string
+	}{
+		{
+			name:     "sanitizes username",
+			username: "Alice/Dev",
+			prefix:   common.KubectlTerminalPodName + "-alice-dev-",
+		},
+		{
+			name:     "falls back to user",
+			username: "!!!",
+			prefix:   common.KubectlTerminalPodName + "-user-",
+		},
+		{
+			name:     "truncates long username",
+			username: strings.Repeat("a", 80),
+			prefix:   common.KubectlTerminalPodName + "-",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := GenerateKubectlAgentName(tc.username)
+			if !strings.HasPrefix(got, tc.prefix) {
+				t.Fatalf("GenerateKubectlAgentName(%q) = %q, want prefix %q", tc.username, got, tc.prefix)
+			}
+			if len(got) > 63 {
+				t.Fatalf("GenerateKubectlAgentName(%q) = %q, want length <= 63", tc.username, got)
+			}
+			if errs := validation.IsDNS1123Subdomain(got); len(errs) > 0 {
+				t.Fatalf("GenerateKubectlAgentName(%q) = %q, invalid DNS subdomain: %v", tc.username, got, errs)
+			}
+		})
 	}
 }

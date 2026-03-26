@@ -13,6 +13,14 @@ import (
 	"github.com/zxh326/kite/pkg/middleware"
 )
 
+func TestNormalizeSearchQuery(t *testing.T) {
+	got := normalizeSearchQuery("  pod   target\t\n")
+	want := "pod target"
+	if got != want {
+		t.Fatalf("normalizeSearchQuery() = %q, want %q", got, want)
+	}
+}
+
 func TestNormalizeSearchLimit(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -52,6 +60,46 @@ func TestSortResults(t *testing.T) {
 	if results[1].Name != "target" || results[1].ResourceType != "namespaces" {
 		t.Fatalf("second result mismatch: got %s/%s", results[1].Name, results[1].ResourceType)
 	}
+}
+
+func TestGetSearchClusterNamePrecedence(t *testing.T) {
+	t.Run("context beats header query and cookie", func(t *testing.T) {
+		ctx := newSearchContextWithRequest(t)
+		ctx.Set(middleware.ClusterNameKey, "context-cluster")
+		ctx.Request.Header.Set(middleware.ClusterNameHeader, "header-cluster")
+		ctx.Request.URL.RawQuery = middleware.ClusterNameHeader + "=query-cluster"
+
+		if got := getSearchClusterName(ctx); got != "context-cluster" {
+			t.Fatalf("getSearchClusterName() = %q, want %q", got, "context-cluster")
+		}
+	})
+
+	t.Run("header beats query and cookie", func(t *testing.T) {
+		ctx := newSearchContextWithRequest(t)
+		ctx.Request.Header.Set(middleware.ClusterNameHeader, "header-cluster")
+		ctx.Request.URL.RawQuery = middleware.ClusterNameHeader + "=query-cluster"
+
+		if got := getSearchClusterName(ctx); got != "header-cluster" {
+			t.Fatalf("getSearchClusterName() = %q, want %q", got, "header-cluster")
+		}
+	})
+
+	t.Run("query beats cookie", func(t *testing.T) {
+		ctx := newSearchContextWithRequest(t)
+		ctx.Request.URL.RawQuery = middleware.ClusterNameHeader + "=query-cluster"
+
+		if got := getSearchClusterName(ctx); got != "query-cluster" {
+			t.Fatalf("getSearchClusterName() = %q, want %q", got, "query-cluster")
+		}
+	})
+
+	t.Run("cookie fallback", func(t *testing.T) {
+		ctx := newSearchContextWithRequest(t)
+
+		if got := getSearchClusterName(ctx); got != "cookie-cluster" {
+			t.Fatalf("getSearchClusterName() = %q, want %q", got, "cookie-cluster")
+		}
+	})
 }
 
 func TestGlobalSearchNegativeLimitDoesNotPanic(t *testing.T) {
@@ -138,6 +186,18 @@ func newSearchContext(t *testing.T, clusterName, target string) *gin.Context {
 	if clusterName != "" {
 		ctx.Set(middleware.ClusterNameKey, clusterName)
 	}
+	return ctx
+}
+
+func newSearchContextWithRequest(t *testing.T) *gin.Context {
+	t.Helper()
+
+	gin.SetMode(gin.TestMode)
+	rec := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(rec)
+	req := httptest.NewRequest(http.MethodGet, "/search", nil)
+	req.AddCookie(&http.Cookie{Name: middleware.ClusterNameHeader, Value: "cookie-cluster"})
+	ctx.Request = req
 	return ctx
 }
 

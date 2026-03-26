@@ -15,3 +15,9 @@ func TestEncryptDecryptString(t *testing.T) {
 		t.Errorf("DecryptString() = %q, want %q", decrypted, original)
 	}
 }
+
+func TestDecryptStringInvalidInput(t *testing.T) {
+	if _, err := DecryptString("not-base64"); err == nil {
+		t.Fatal("DecryptString() error = nil, want error")
+	}
+}
