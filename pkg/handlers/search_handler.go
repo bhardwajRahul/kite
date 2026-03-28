@@ -1,11 +1,14 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +17,7 @@ import (
 	"github.com/zxh326/kite/pkg/handlers/resources"
 	"github.com/zxh326/kite/pkg/middleware"
 	"github.com/zxh326/kite/pkg/utils"
+	"golang.org/x/sync/errgroup"
 )
 
 type SearchHandler struct {
@@ -54,19 +58,53 @@ func (h *SearchHandler) createCacheKey(clusterName, query string, limit int) str
 func (h *SearchHandler) Search(c *gin.Context, query string, limit int) ([]common.SearchResult, error) {
 	query = normalizeSearchQuery(query)
 	limit = normalizeSearchLimit(limit)
-	var allResults []common.SearchResult
 
-	// Search in different resource types
+	// Determine which resource types to search
 	searchFuncs := resources.SearchFuncs
 	guessSearchResources, q := utils.GuessSearchResources(query)
+
+	// Collect the search functions to execute
+	type searchEntry struct {
+		name string
+		fn   func(*gin.Context, string, int64) ([]common.SearchResult, error)
+	}
+	var entries []searchEntry
 	for name, searchFunc := range searchFuncs {
 		if guessSearchResources == "all" || name == guessSearchResources {
-			results, err := searchFunc(c, q, int64(limit))
-			if err != nil {
-				continue
-			}
-			allResults = append(allResults, results...)
+			entries = append(entries, searchEntry{name: name, fn: searchFunc})
 		}
+	}
+
+	// Execute searches in parallel using errgroup
+	resultSlices := make([][]common.SearchResult, len(entries))
+	var hadFailure atomic.Bool // set on panic OR error — prevents caching incomplete results
+	g, _ := errgroup.WithContext(context.Background())
+
+	for i, entry := range entries {
+		g.Go(func() (err error) {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("search: resource %q panicked: %v", entry.name, r)
+					hadFailure.Store(true)
+				}
+			}()
+			results, searchErr := entry.fn(c, q, int64(limit))
+			if searchErr != nil {
+				log.Printf("search: resource %q failed: %v", entry.name, searchErr)
+				hadFailure.Store(true)
+				return nil
+			}
+			resultSlices[i] = results
+			return nil
+		})
+	}
+
+	_ = g.Wait() // all goroutines return nil, error is always nil
+
+	// Merge results from all resource types
+	var allResults []common.SearchResult
+	for _, slice := range resultSlices {
+		allResults = append(allResults, slice...)
 	}
 
 	queryLower := strings.ToLower(q)
@@ -77,7 +115,11 @@ func (h *SearchHandler) Search(c *gin.Context, query string, limit int) ([]commo
 		allResults = allResults[:limit]
 	}
 
-	h.cache.Add(h.createCacheKey(getSearchClusterName(c), query, limit), allResults)
+	// Only cache results when no failure (panic or error) occurred — avoids
+	// caching incomplete results that would be served as valid 200 OK for the TTL.
+	if !hadFailure.Load() {
+		h.cache.Add(h.createCacheKey(getSearchClusterName(c), query, limit), allResults)
+	}
 	return allResults, nil
 }
 
@@ -104,11 +146,6 @@ func (h *SearchHandler) GlobalSearch(c *gin.Context) {
 			Results: cachedResults,
 			Total:   len(cachedResults),
 		}
-		copiedCtx := c.Copy()
-		go func() {
-			// Perform search in the background to update cache
-			_, _ = h.Search(copiedCtx, query, limit)
-		}()
 		c.JSON(http.StatusOK, response)
 		return
 	}
