@@ -30,8 +30,10 @@ func main() {
 	}
 
 	srv := &http.Server{
-		Addr:    ":" + common.Port,
-		Handler: buildEngine(cm).Handler(),
+		Addr:              ":" + common.Port,
+		Handler:           buildEngine(cm).Handler(),
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
