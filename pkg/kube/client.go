@@ -43,6 +43,7 @@ type K8sClient struct {
 	ClientSet     *kubernetes.Clientset
 	Configuration *rest.Config
 	MetricsClient *metricsclient.Clientset
+	CacheEnabled  bool // true when using controller-runtime informer cache
 
 	cancel context.CancelFunc
 }
@@ -60,9 +61,10 @@ func NewClient(config *rest.Config) (*K8sClient, error) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
+	cacheEnabled := os.Getenv("DISABLE_CACHE") != "true"
 
 	var c client.Client
-	if os.Getenv("DISABLE_CACHE") == "true" {
+	if !cacheEnabled {
 		c, err = client.New(config, client.Options{
 			Scheme: runtimeScheme,
 		})
@@ -115,6 +117,7 @@ func NewClient(config *rest.Config) (*K8sClient, error) {
 		ClientSet:     clientset,
 		Configuration: config,
 		MetricsClient: metricsClient,
+		CacheEnabled:  cacheEnabled,
 		cancel:        cancel,
 	}, nil
 }
