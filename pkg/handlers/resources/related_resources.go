@@ -10,6 +10,7 @@ import (
 	"github.com/zxh326/kite/pkg/cluster"
 	"github.com/zxh326/kite/pkg/common"
 	"github.com/zxh326/kite/pkg/kube"
+	"golang.org/x/sync/errgroup"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -26,7 +27,7 @@ func discoverServices(ctx context.Context, k8sClient *kube.K8sClient, namespace 
 	}
 
 	var serviceList corev1.ServiceList
-	if err := k8sClient.List(ctx, &serviceList, &client.ListOptions{Namespace: namespace}); err != nil {
+	if err := k8sClient.List(ctx, &serviceList, client.InNamespace(namespace)); err != nil {
 		return nil, fmt.Errorf("failed to list services: %w", err)
 	}
 
@@ -190,19 +191,31 @@ func checkInUsedConfigs(spec *corev1.PodTemplateSpec, name string, resourceType 
 	return false
 }
 
+// discoveryWorkloads finds Deployments, StatefulSets and DaemonSets that
+// reference the given ConfigMap/Secret/PVC.  The three List calls are
+// independent, so we fire them in parallel with errgroup.
 func discoveryWorkloads(ctx context.Context, k8sClient *kube.K8sClient, namespace string, name string, resourceType string) ([]common.RelatedResource, error) {
+	g, gctx := errgroup.WithContext(ctx)
+
 	var deploymentList appsv1.DeploymentList
-	if err := k8sClient.List(ctx, &deploymentList, &client.ListOptions{Namespace: namespace}); err != nil {
-		return nil, err
-	}
 	var statefulSetList appsv1.StatefulSetList
-	if err := k8sClient.List(ctx, &statefulSetList, &client.ListOptions{Namespace: namespace}); err != nil {
-		return nil, err
-	}
 	var daemonSetList appsv1.DaemonSetList
-	if err := k8sClient.List(ctx, &daemonSetList, &client.ListOptions{Namespace: namespace}); err != nil {
+
+	g.Go(func() error {
+		return k8sClient.List(gctx, &deploymentList, client.InNamespace(namespace))
+	})
+	g.Go(func() error {
+		return k8sClient.List(gctx, &statefulSetList, client.InNamespace(namespace))
+	})
+	g.Go(func() error {
+		return k8sClient.List(gctx, &daemonSetList, client.InNamespace(namespace))
+	})
+
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
+
+	// Each list is owned exclusively by this goroutine after Wait — safe to read.
 	var related []common.RelatedResource
 	for _, deployment := range deploymentList.Items {
 		if checkInUsedConfigs(&deployment.Spec.Template, name, resourceType) {
@@ -319,12 +332,27 @@ func GetRelatedResources(c *gin.Context) {
 	}
 
 	if podSpec != nil && selector != nil {
-		relatedServices, err := discoverServices(ctx, cs.K8sClient, namespace, selector)
-		if err != nil {
+		// discoverServices (I/O) and discoverConfigs (CPU-only) are independent;
+		// run them in parallel so the I/O overlaps with the CPU work.
+		g, gctx := errgroup.WithContext(ctx)
+
+		var relatedServices []common.RelatedResource
+		g.Go(func() error {
+			var err error
+			relatedServices, err = discoverServices(gctx, cs.K8sClient, namespace, selector)
+			return err
+		})
+
+		var related []common.RelatedResource
+		g.Go(func() error {
+			related = discoverConfigs(namespace, podSpec)
+			return nil
+		})
+
+		if err := g.Wait(); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to discover services: " + err.Error()})
 			return
 		}
-		related := discoverConfigs(namespace, podSpec)
 
 		result = append(result, relatedServices...)
 		result = append(result, related...)
