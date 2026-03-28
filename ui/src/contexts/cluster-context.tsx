@@ -28,6 +28,15 @@ export const ClusterProvider: React.FC<{ children: React.ReactNode }> = ({
   const queryClient = useQueryClient()
   const [isSwitching, setIsSwitching] = useState(false)
 
+  useEffect(() => {
+    if (currentCluster) {
+      document.cookie = `x-cluster-name=${currentCluster}; path=/`
+      return
+    }
+    document.cookie =
+      'x-cluster-name=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+  }, [currentCluster])
+
   // Fetch clusters from API (this request shouldn't need cluster header)
   const {
     data: clusters = [],

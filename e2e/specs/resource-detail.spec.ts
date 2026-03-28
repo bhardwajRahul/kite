@@ -44,7 +44,7 @@ test.describe('resource detail navigation', () => {
     await expect(page.getByRole('button', { name: 'Refresh' })).toBeVisible()
   })
 
-  test('navigates from the pods list to pod detail and loads logs, yaml, and terminal tabs', async ({
+  test('navigates from the pods list to pod detail, opens proxy, and loads logs, yaml, and terminal tabs', async ({
     page,
   }) => {
     const podName = `e2e-nginx-${Date.now()}`
@@ -102,6 +102,17 @@ spec:
         .getByRole('navigation', { name: 'breadcrumb' })
         .getByRole('link', { name: podName })
     ).toBeVisible()
+
+    const proxyLink = page.locator('a[href*="/proxy/"]').first()
+    await expect(proxyLink).toBeVisible()
+
+    const proxyPagePromise = page.waitForEvent('popup')
+    await proxyLink.click()
+
+    const proxyPage = await proxyPagePromise
+    await proxyPage.waitForLoadState('domcontentloaded')
+    await expect(proxyPage.locator('body')).toContainText('Welcome to nginx!')
+    await proxyPage.close()
 
     await page.getByRole('tab', { name: 'Logs' }).click()
     await page.waitForURL(

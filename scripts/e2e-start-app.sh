@@ -26,4 +26,4 @@ unset KITE_USERNAME
 unset KITE_PASSWORD
 unset KUBECONFIG
 
-exec ./kite
+exec ./kite -v 3
