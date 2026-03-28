@@ -157,7 +157,7 @@ export function SidebarCustomizer({
                             size="sm"
                             onClick={() => toggleItemPin(item.id)}
                             className="h-8 w-8 p-0"
-                            aria-label="Unpin item"
+                            aria-label="Unpin"
                           >
                             <PinOff className="h-3.5 w-3.5" />
                           </Button>
@@ -298,7 +298,7 @@ export function SidebarCustomizer({
                               onClick={() => toggleItemPin(item.id)}
                               className={`h-8 w-8 p-0 ${isPinned ? 'text-primary' : 'text-muted-foreground'}`}
                               title={isPinned ? 'Unpin' : 'Pin to top'}
-                              aria-label={isPinned ? 'Unpin item' : 'Pin item'}
+                              aria-label={isPinned ? 'Unpin' : 'Pin to top'}
                             >
                               {isPinned ? (
                                 <PinOff className="h-3.5 w-3.5" />

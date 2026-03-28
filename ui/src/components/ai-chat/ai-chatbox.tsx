@@ -425,9 +425,19 @@ function ToolCallMessage({
                   </div>
                 )
               })}
-              <Button size="sm" className="h-8" onClick={submitForm}>
-                {inputRequest.submitLabel || 'Continue'}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" className="h-8" onClick={submitForm}>
+                  {inputRequest.submitLabel || 'Continue'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8"
+                  onClick={() => onDeny?.(message.id)}
+                >
+                  {t('common.cancel', 'Cancel')}
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -938,6 +948,16 @@ export function AIChatbox({
     pageContext,
   ])
 
+  const hasActiveToolExecution = messages.some(
+    (message) =>
+      message.role === 'tool' &&
+      !message.toolResult &&
+      !message.inputRequest &&
+      !message.pendingAction &&
+      message.actionStatus !== 'denied' &&
+      message.actionStatus !== 'error'
+  )
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -1183,17 +1203,16 @@ export function AIChatbox({
                   onSubmitInput={submitInput}
                 />
               ))}
-              {isLoading &&
-                !messages.find((m) => m.role === 'tool' && !m.toolResult) && (
-                  <div className="mx-3 my-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Bot className="h-3.5 w-3.5 animate-pulse" />
-                    <span className="ai-thinking-dots">
-                      <span />
-                      <span />
-                      <span />
-                    </span>
-                  </div>
-                )}
+              {isLoading && !hasActiveToolExecution && (
+                <div className="mx-3 my-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Bot className="h-3.5 w-3.5 animate-pulse" />
+                  <span className="ai-thinking-dots">
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </>
           )}

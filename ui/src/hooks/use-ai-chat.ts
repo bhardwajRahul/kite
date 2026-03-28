@@ -679,7 +679,16 @@ export function useAIChat() {
       const baseMessages = buildAPIMessagesFromCurrentState()
 
       updateMessages((prev) => [
-        ...prev,
+        ...prev.map((message) =>
+          message.inputRequest
+            ? {
+                ...message,
+                actionStatus: 'denied' as const,
+                inputRequest: undefined,
+                content: `${message.toolName || 'input request'} cancelled`,
+              }
+            : message
+        ),
         {
           id: generateId(),
           role: 'user',
@@ -985,7 +994,9 @@ export function useAIChat() {
             ? {
                 ...m,
                 actionStatus: 'denied' as const,
-                content: `${m.toolName} cancelled`,
+                pendingAction: undefined,
+                inputRequest: undefined,
+                content: `${m.toolName || 'request'} cancelled`,
               }
             : m
         )
