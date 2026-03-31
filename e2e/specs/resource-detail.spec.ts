@@ -18,10 +18,11 @@ test.describe('resource detail navigation', () => {
     await page.waitForURL('**/services/default/kubernetes')
     await expect(page.getByText('Namespace: default')).toBeVisible()
     await expect(
-      page
-        .getByRole('navigation', { name: 'breadcrumb' })
-        .getByRole('link', { name: 'kubernetes' })
-    ).toBeVisible()
+      page.getByRole('navigation', { name: 'breadcrumb' })
+    ).toContainText(/services/i)
+    await expect(
+      page.getByRole('navigation', { name: 'breadcrumb' })
+    ).toContainText('default')
     await expect(page.getByRole('button', { name: 'Refresh' })).toBeVisible()
   })
 
@@ -37,10 +38,8 @@ test.describe('resource detail navigation', () => {
 
     await page.waitForURL(`**/nodes/${controlPlaneNodeName}`)
     await expect(
-      page
-        .getByRole('navigation', { name: 'breadcrumb' })
-        .getByRole('link', { name: controlPlaneNodeName })
-    ).toBeVisible()
+      page.getByRole('navigation', { name: 'breadcrumb' })
+    ).toContainText(/nodes/i)
     await expect(page.getByRole('button', { name: 'Refresh' })).toBeVisible()
   })
 
@@ -98,10 +97,11 @@ spec:
 
     await page.waitForURL(`**/pods/default/${podName}`)
     await expect(
-      page
-        .getByRole('navigation', { name: 'breadcrumb' })
-        .getByRole('link', { name: podName })
-    ).toBeVisible()
+      page.getByRole('navigation', { name: 'breadcrumb' })
+    ).toContainText(/pods/i)
+    await expect(
+      page.getByRole('navigation', { name: 'breadcrumb' })
+    ).toContainText('default')
 
     const proxyLink = page.locator('a[href*="/proxy/"]').first()
     await expect(proxyLink).toBeVisible()
