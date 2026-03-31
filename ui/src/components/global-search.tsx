@@ -396,8 +396,8 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
         <DialogTitle>{t('globalSearch.title')}</DialogTitle>
         <DialogDescription>{t('globalSearch.description')}</DialogDescription>
       </DialogHeader>
-      <DialogContent className="overflow-hidden p-0">
-        <Command shouldFilter={false}>
+      <DialogContent className="max-w-4xl gap-0 overflow-hidden p-0 sm:p-0">
+        <Command shouldFilter={false} className="rounded-none">
           <CommandInput
             placeholder={t('globalSearch.placeholder')}
             value={query}
