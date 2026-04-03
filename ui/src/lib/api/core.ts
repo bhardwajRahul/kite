@@ -120,12 +120,18 @@ export const drainNode = async (
     deleteLocalData: boolean
     ignoreDaemonsets: boolean
   }
-): Promise<{ message: string; node: string; options: unknown }> => {
+): Promise<{
+  message: string
+  node: string
+  pods: number
+  warnings?: string | string[]
+}> => {
   const endpoint = `/nodes/_all/${nodeName}/drain`
   const response = await apiClient.post<{
     message: string
     node: string
-    options: unknown
+    pods: number
+    warnings?: string | string[]
   }>(endpoint, options)
 
   return response

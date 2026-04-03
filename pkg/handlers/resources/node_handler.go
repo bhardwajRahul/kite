@@ -3,6 +3,7 @@ package resources
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"sort"
 
@@ -14,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
+	"k8s.io/kubectl/pkg/drain"
 	metricsv1 "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -61,18 +63,45 @@ func (h *NodeHandler) DrainNode(c *gin.Context) {
 		return
 	}
 
-	// TODO: Implement actual drain logic
-	// For now, we'll simulate the drain operation
-	// In a real implementation, you would:
-	// 1. Mark the node as unschedulable (cordon)
-	// 2. Evict all pods from the node
-	// 3. Handle daemonsets appropriately
-	// 4. Wait for pods to be evicted or force delete them
+	drainer := &drain.Helper{
+		Ctx:                 ctx,
+		Client:              cs.K8sClient.ClientSet,
+		Force:               drainRequest.Force,
+		GracePeriodSeconds:  drainRequest.GracePeriod,
+		IgnoreAllDaemonSets: drainRequest.IgnoreDaemonsets,
+		DeleteEmptyDirData:  drainRequest.DeleteLocal,
+		Out:                 io.Discard,
+		ErrOut:              io.Discard,
+	}
+
+	if err := drain.RunCordonOrUncordon(drainer, &node, false); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to cordon node: " + err.Error()})
+		return
+	}
+
+	podDeleteList, errs := drainer.GetPodsForDeletion(nodeName)
+	if len(errs) > 0 {
+		errMsg := ""
+		for i, item := range errs {
+			if i > 0 {
+				errMsg += "; "
+			}
+			errMsg += item.Error()
+		}
+		c.JSON(http.StatusConflict, gin.H{"error": errMsg})
+		return
+	}
+
+	if err := drainer.DeleteOrEvictPods(podDeleteList.Pods()); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to drain node: " + err.Error()})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": fmt.Sprintf("Node %s drain initiated", nodeName),
-		"node":    node.Name,
-		"options": drainRequest,
+		"message":  fmt.Sprintf("Node %s drained successfully", nodeName),
+		"node":     node.Name,
+		"pods":     len(podDeleteList.Pods()),
+		"warnings": podDeleteList.Warnings(),
 	})
 }
 

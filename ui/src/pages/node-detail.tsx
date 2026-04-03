@@ -126,10 +126,16 @@ export function NodeDetail(props: { name: string }) {
   // Node operation handlers
   const handleDrain = async () => {
     try {
-      await drainNode(name, drainOptions)
-      toast.success(`Node ${name} drained successfully`)
+      const result = await drainNode(name, drainOptions)
+      toast.success(
+        `Node ${name} drained successfully (${result.pods} pod${result.pods === 1 ? '' : 's'})`
+      )
+      if (result.warnings) {
+        toast.warning(result.warnings)
+      }
       setIsDrainPopoverOpen(false)
-      handleRefresh()
+      await handleRefresh()
+      await refetchRelated()
     } catch (error) {
       console.error('Failed to drain node:', error)
       toast.error(translateError(error, t))
