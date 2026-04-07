@@ -389,6 +389,17 @@ export const resourceCatalog = [
     icon: 'IconArrowsHorizontal',
     sidebar: { groupKey: 'sidebar.groups.config', order: 2 },
   },
+  {
+    type: 'poddisruptionbudgets',
+    singular: 'poddisruptionbudget',
+    singularLabel: 'PodDisruptionBudget',
+    pluralLabel: 'PodDisruptionBudgets',
+    shortLabel: 'PDB',
+    clusterScope: false,
+    titleKey: 'nav.poddisruptionbudgets',
+    icon: 'IconShield',
+    sidebar: { groupKey: 'sidebar.groups.config', order: 3 },
+  },
 ] as const satisfies readonly ResourceCatalogEntryBase[]
 
 export type CatalogResourceType = (typeof resourceCatalog)[number]['type']

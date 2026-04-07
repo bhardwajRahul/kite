@@ -34,15 +34,16 @@ const (
 )
 
 var searchResourceOrder = map[string]int{
-	string(common.Deployments):  1,
-	string(common.Pods):         2,
-	string(common.DaemonSets):   3,
-	string(common.StatefulSets): 4,
-	string(common.ConfigMaps):   5,
-	string(common.Services):     6,
-	string(common.Secrets):      7,
-	string(common.Ingresses):    8,
-	string(common.Namespaces):   9,
+	string(common.Deployments):          1,
+	string(common.Pods):                 2,
+	string(common.DaemonSets):           3,
+	string(common.StatefulSets):         4,
+	string(common.ConfigMaps):           5,
+	string(common.Services):             6,
+	string(common.Secrets):              7,
+	string(common.Ingresses):            8,
+	string(common.Namespaces):           9,
+	string(common.PodDisruptionBudgets): 10,
 }
 
 func NewSearchHandler() *SearchHandler {
