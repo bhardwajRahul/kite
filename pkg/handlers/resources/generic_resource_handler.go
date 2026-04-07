@@ -27,17 +27,16 @@ type GenericResourceHandler[T client.Object, V client.ObjectList] struct {
 }
 
 func NewGenericResourceHandler[T client.Object, V client.ObjectList](
-	name string,
-	isClusterScoped bool,
-	enableSearch bool,
+	resourceType common.ResourceType,
 ) *GenericResourceHandler[T, V] {
 	var obj T
 	var list V
+	meta := common.MustLookupResource(string(resourceType))
 
 	return &GenericResourceHandler[T, V]{
-		name:            name,
-		isClusterScoped: isClusterScoped,
-		enableSearch:    enableSearch,
+		name:            string(resourceType),
+		isClusterScoped: meta.ClusterScoped,
+		enableSearch:    meta.GlobalSearch,
 		objectType:      reflect.TypeOf(obj).Elem(),
 		listType:        reflect.TypeOf(list).Elem(),
 	}
@@ -102,7 +101,7 @@ func (h *GenericResourceHandler[T, V]) GetResource(c *gin.Context, namespace, na
 	object := reflect.New(h.objectType).Interface().(T)
 	namespacedName := types.NamespacedName{Name: name}
 	if !h.isClusterScoped {
-		if namespace != "" && namespace != "_all" {
+		if namespace != "" && namespace != common.AllNamespaces {
 			namespacedName.Namespace = namespace
 		}
 	}
