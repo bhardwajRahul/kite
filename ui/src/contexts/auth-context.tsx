@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from 'react'
 
@@ -157,19 +158,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [refetchAuthProviders, refetchCurrentUser])
 
-  const login = async (provider: string = 'github') => {
+  const login = useCallback(async (provider: string = 'github') => {
     const { auth_url } = await initiateOAuthLogin(provider)
     window.location.href = auth_url
-  }
+  }, [])
 
-  const loginWithCredentials = async (
-    provider: CredentialProvider,
-    username: string,
-    password: string
-  ) => {
-    await authenticateWithCredentials(provider, username, password)
-    await checkAuth()
-  }
+  const loginWithCredentials = useCallback(
+    async (
+      provider: CredentialProvider,
+      username: string,
+      password: string
+    ) => {
+      await authenticateWithCredentials(provider, username, password)
+      await checkAuth()
+    },
+    [checkAuth]
+  )
+
+  const logout = useCallback(async () => {
+    await logoutUser()
+    setUser(null)
+    window.location.href = withSubPath('/login')
+  }, [])
 
   const refreshToken = useCallback(async () => {
     try {
@@ -180,12 +190,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       window.location.href = withSubPath('/login')
     }
   }, [])
-
-  const logout = async () => {
-    await logoutUser()
-    setUser(null)
-    window.location.href = withSubPath('/login')
-  }
 
   useEffect(() => {
     if (!user) return
@@ -211,19 +215,34 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const hasGlobalSidebarPreference = globalSidebarPreference.trim() !== ''
 
-  const value = {
-    user,
-    isLoading,
-    hasGlobalSidebarPreference,
-    globalSidebarPreference,
-    credentialProviders,
-    oauthProviders,
-    login,
-    loginWithCredentials,
-    logout,
-    checkAuth,
-    refreshToken,
-  }
+  const value = useMemo(
+    () => ({
+      user,
+      isLoading,
+      hasGlobalSidebarPreference,
+      globalSidebarPreference,
+      credentialProviders,
+      oauthProviders,
+      login,
+      loginWithCredentials,
+      logout,
+      checkAuth,
+      refreshToken,
+    }),
+    [
+      user,
+      isLoading,
+      hasGlobalSidebarPreference,
+      globalSidebarPreference,
+      credentialProviders,
+      oauthProviders,
+      login,
+      loginWithCredentials,
+      logout,
+      checkAuth,
+      refreshToken,
+    ]
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

@@ -59,6 +59,9 @@ func method2verb(method string) string {
 // - /api/v1/pods/default => default, pods
 // - /api/v1/pods => "", pods
 func url2namespaceresource(url string) (namespace string, resource string) {
+	if common.Base != "" {
+		url = strings.TrimPrefix(url, common.Base)
+	}
 	// Split the URL into its components
 	parts := strings.Split(url, "/")
 	if len(parts) < 4 {

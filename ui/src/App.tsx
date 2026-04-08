@@ -6,6 +6,7 @@ import { Outlet, useSearchParams } from 'react-router-dom'
 
 import { AIChatbox, StandaloneAIChatbox } from './components/ai-chat/ai-chatbox'
 import { AppSidebar } from './components/app-sidebar'
+import { ErrorBoundary } from './components/error-boundary'
 import { FloatingTerminal } from './components/floating-terminal'
 import { GlobalSearch } from './components/global-search'
 import {
@@ -67,7 +68,9 @@ function AppContent() {
           <div className="@container/main">
             <div className="flex flex-col gap-4 py-4 md:gap-6">
               <div className="px-4 lg:px-6">
-                <Outlet />
+                <ErrorBoundary>
+                  <Outlet />
+                </ErrorBoundary>
               </div>
             </div>
           </div>
@@ -76,8 +79,14 @@ function AppContent() {
       {isOpen ? (
         <GlobalSearch open={isOpen} onOpenChange={closeSearch} />
       ) : null}
-      {isTerminalOpen ? <FloatingTerminal /> : null}
-      <AIChatbox />
+      {isTerminalOpen ? (
+        <ErrorBoundary fallback={null}>
+          <FloatingTerminal />
+        </ErrorBoundary>
+      ) : null}
+      <ErrorBoundary fallback={null}>
+        <AIChatbox />
+      </ErrorBoundary>
       <Toaster />
     </>
   )

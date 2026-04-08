@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 
 	"golang.org/x/net/websocket"
 	corev1 "k8s.io/api/core/v1"
@@ -20,7 +21,8 @@ type PodLogStream struct {
 
 type BatchLogHandler struct {
 	conn      *websocket.Conn
-	pods      map[string]*PodLogStream // key: namespace/name
+	mu        sync.RWMutex
+	pods      map[string]*PodLogStream // key: namespace/name; guarded by mu
 	k8sClient *K8sClient
 	opts      *corev1.PodLogOptions
 	ctx       context.Context
@@ -77,11 +79,14 @@ func (l *BatchLogHandler) startPodLogStream(podStream *PodLogStream) {
 	lw := writerFunc(func(p []byte) (int, error) {
 		logString := string(p)
 		logLines := strings.SplitSeq(logString, "\n")
+		l.mu.RLock()
+		multiPod := len(l.pods) > 1
+		l.mu.RUnlock()
 		for line := range logLines {
 			if line == "" {
 				continue
 			}
-			if len(l.pods) > 1 {
+			if multiPod {
 				line = fmt.Sprintf("[%s]: %s", pod.Name, line)
 			}
 			err := sendMessage(l.conn, "log", line)
@@ -136,7 +141,9 @@ func (l *BatchLogHandler) heartbeat(ctx context.Context) {
 func (l *BatchLogHandler) AddPod(pod corev1.Pod) {
 	key := fmt.Sprintf("%s/%s", pod.Namespace, pod.Name)
 
+	l.mu.Lock()
 	if _, exists := l.pods[key]; exists {
+		l.mu.Unlock()
 		return
 	}
 
@@ -145,6 +152,7 @@ func (l *BatchLogHandler) AddPod(pod corev1.Pod) {
 		Done: make(chan struct{}),
 	}
 	l.pods[key] = podStream
+	l.mu.Unlock()
 
 	// Start streaming for this pod
 	go l.startPodLogStream(podStream)
@@ -156,10 +164,15 @@ func (l *BatchLogHandler) AddPod(pod corev1.Pod) {
 // RemovePod removes a pod from the batch log handler and stops streaming its logs
 func (l *BatchLogHandler) RemovePod(pod corev1.Pod) {
 	key := fmt.Sprintf("%s/%s", pod.Namespace, pod.Name)
+
+	l.mu.Lock()
 	podStream, exists := l.pods[key]
 	if !exists {
+		l.mu.Unlock()
 		return
 	}
+	delete(l.pods, key)
+	l.mu.Unlock()
 
 	if podStream.Cancel != nil {
 		podStream.Cancel()
@@ -170,18 +183,18 @@ func (l *BatchLogHandler) RemovePod(pod corev1.Pod) {
 		_ = sendMessage(l.conn, "pod_removed", fmt.Sprintf("{\"pod\":\"%s\",\"namespace\":\"%s\"}",
 			pod.Name, pod.Namespace))
 	}()
-
-	delete(l.pods, key)
 }
 
 func (l *BatchLogHandler) Stop() {
+	l.mu.Lock()
 	for _, podStream := range l.pods {
 		if podStream.Cancel != nil {
 			podStream.Cancel()
 		}
 	}
-	l.cancel()
 	l.pods = make(map[string]*PodLogStream)
+	l.mu.Unlock()
+	l.cancel()
 }
 
 // writerFunc adapts a function to io.Writer so we can create

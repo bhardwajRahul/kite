@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync/atomic"
 	"time"
 
 	"github.com/zxh326/kite/pkg/common"
@@ -33,7 +34,7 @@ type TerminalSession struct {
 	podName   string
 	container string
 
-	lastHeartbeat time.Time // Track last heartbeat for ping/pong
+	lastHeartbeat atomic.Int64 // UnixNano; written/read from multiple goroutines
 }
 
 func NewTerminalSession(client *K8sClient, conn *websocket.Conn, namespace, podName, container string) *TerminalSession {
@@ -123,7 +124,7 @@ func (session *TerminalSession) Read(p []byte) (int, error) {
 			}
 		}
 	case "ping":
-		session.lastHeartbeat = time.Now()
+		session.lastHeartbeat.Store(time.Now().UnixNano())
 		session.SendMessage("pong", "")
 	default:
 		return copy(p, EndOfTransmission), fmt.Errorf("unknown message type: %s", msg.Type)
@@ -164,7 +165,7 @@ func (session *TerminalSession) SendErrorMessage(errMsg string) {
 }
 
 func (session *TerminalSession) checkHeartbeat(ctx context.Context) {
-	session.lastHeartbeat = time.Now()
+	session.lastHeartbeat.Store(time.Now().UnixNano())
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
@@ -173,7 +174,8 @@ func (session *TerminalSession) checkHeartbeat(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if time.Since(session.lastHeartbeat) > 1*time.Minute {
+			lastBeat := time.Unix(0, session.lastHeartbeat.Load())
+			if time.Since(lastBeat) > 1*time.Minute {
 				if err := session.conn.Close(); err != nil {
 					klog.Errorf("WebSocket close error: %v", err)
 				}

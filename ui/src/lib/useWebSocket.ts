@@ -153,11 +153,12 @@ export function useWebSocket(
             return prev
           }
 
-          prev.uploadSpeed = uploadSpeed
-          prev.downloadSpeed = downloadSpeed
-          prev.totalUploaded = stats.totalUploaded
-          prev.totalDownloaded = stats.totalDownloaded
-          return prev
+          return {
+            uploadSpeed,
+            downloadSpeed,
+            totalUploaded: stats.totalUploaded,
+            totalDownloaded: stats.totalDownloaded,
+          }
         })
 
         // Reset counters after specified interval
