@@ -3,7 +3,7 @@ module github.com/zxh326/kite
 go 1.25.0
 
 require (
-	github.com/anthropics/anthropic-sdk-go v1.32.0
+	github.com/anthropics/anthropic-sdk-go v1.36.0
 	github.com/blang/semver/v4 v4.0.0
 	github.com/bytedance/mockey v1.4.5
 	github.com/gin-contrib/gzip v1.2.6
@@ -18,8 +18,8 @@ require (
 	github.com/prometheus/common v0.67.5
 	github.com/samber/lo v1.53.0
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/crypto v0.49.0
-	golang.org/x/net v0.52.0
+	golang.org/x/crypto v0.50.0
+	golang.org/x/net v0.53.0
 	golang.org/x/sync v0.20.0
 	gorm.io/driver/mysql v1.6.0
 	gorm.io/driver/postgres v1.6.0
@@ -127,9 +127,9 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.22.0 // indirect
 	golang.org/x/oauth2 v0.34.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/term v0.41.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/term v0.42.0 // indirect
+	golang.org/x/text v0.36.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.5.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
