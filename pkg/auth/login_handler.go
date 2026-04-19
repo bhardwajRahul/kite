@@ -15,7 +15,16 @@ import (
 )
 
 func (h *AuthHandler) GetProviders(c *gin.Context) {
-	credentialProviders := []string{model.AuthProviderPassword}
+	var credentialProviders []string
+
+	generalSetting, err := model.GetGeneralSetting()
+	if err != nil {
+		klog.Warningf("Failed to load general setting for providers: %v", err)
+	}
+	if generalSetting == nil || !generalSetting.PasswordLoginDisabled {
+		credentialProviders = append(credentialProviders, model.AuthProviderPassword)
+	}
+
 	oauthProviders := uniqueStrings(h.manager.GetAvailableProviders())
 
 	setting, err := model.GetLDAPSetting()
@@ -67,6 +76,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 }
 
 func (h *AuthHandler) PasswordLogin(c *gin.Context) {
+	setting, err := model.GetGeneralSetting()
+	if err == nil && setting.PasswordLoginDisabled {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Password login is disabled"})
+		return
+	}
 	h.handleCredentialLogin(c, model.AuthProviderPassword, h.authenticatePasswordUser)
 }
 

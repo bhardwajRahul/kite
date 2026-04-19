@@ -196,33 +196,35 @@ func HandleGetGeneralSetting(c *gin.Context) {
 	}
 	hasAIAPIKey := strings.TrimSpace(string(setting.AIAPIKey)) != ""
 	c.JSON(http.StatusOK, gin.H{
-		"aiAgentEnabled":     setting.AIAgentEnabled,
-		"aiProvider":         setting.AIProvider,
-		"aiModel":            setting.AIModel,
-		"aiApiKey":           "",
-		"aiApiKeyConfigured": hasAIAPIKey,
-		"aiBaseUrl":          setting.AIBaseURL,
-		"aiMaxTokens":        setting.AIMaxTokens,
-		"kubectlEnabled":     setting.KubectlEnabled,
-		"kubectlImage":       setting.KubectlImage,
-		"nodeTerminalImage":  setting.NodeTerminalImage,
-		"enableAnalytics":    setting.EnableAnalytics,
-		"enableVersionCheck": setting.EnableVersionCheck,
+		"aiAgentEnabled":        setting.AIAgentEnabled,
+		"aiProvider":            setting.AIProvider,
+		"aiModel":               setting.AIModel,
+		"aiApiKey":              "",
+		"aiApiKeyConfigured":    hasAIAPIKey,
+		"aiBaseUrl":             setting.AIBaseURL,
+		"aiMaxTokens":           setting.AIMaxTokens,
+		"kubectlEnabled":        setting.KubectlEnabled,
+		"kubectlImage":          setting.KubectlImage,
+		"nodeTerminalImage":     setting.NodeTerminalImage,
+		"enableAnalytics":       setting.EnableAnalytics,
+		"enableVersionCheck":    setting.EnableVersionCheck,
+		"passwordLoginDisabled": setting.PasswordLoginDisabled,
 	})
 }
 
 type UpdateGeneralSettingRequest struct {
-	AIAgentEnabled     bool    `json:"aiAgentEnabled"`
-	AIProvider         string  `json:"aiProvider"`
-	AIModel            string  `json:"aiModel"`
-	AIAPIKey           *string `json:"aiApiKey"`
-	AIBaseURL          string  `json:"aiBaseUrl"`
-	AIMaxTokens        int     `json:"aiMaxTokens"`
-	KubectlEnabled     bool    `json:"kubectlEnabled"`
-	KubectlImage       string  `json:"kubectlImage"`
-	NodeTerminalImage  string  `json:"nodeTerminalImage"`
-	EnableAnalytics    bool    `json:"enableAnalytics"`
-	EnableVersionCheck bool    `json:"enableVersionCheck"`
+	AIAgentEnabled        bool    `json:"aiAgentEnabled"`
+	AIProvider            string  `json:"aiProvider"`
+	AIModel               string  `json:"aiModel"`
+	AIAPIKey              *string `json:"aiApiKey"`
+	AIBaseURL             string  `json:"aiBaseUrl"`
+	AIMaxTokens           int     `json:"aiMaxTokens"`
+	KubectlEnabled        bool    `json:"kubectlEnabled"`
+	KubectlImage          string  `json:"kubectlImage"`
+	NodeTerminalImage     string  `json:"nodeTerminalImage"`
+	EnableAnalytics       bool    `json:"enableAnalytics"`
+	EnableVersionCheck    bool    `json:"enableVersionCheck"`
+	PasswordLoginDisabled *bool   `json:"passwordLoginDisabled"`
 }
 
 func HandleUpdateGeneralSetting(c *gin.Context) {
@@ -298,6 +300,9 @@ func HandleUpdateGeneralSetting(c *gin.Context) {
 		"enable_analytics":     req.EnableAnalytics,
 		"enable_version_check": req.EnableVersionCheck,
 	}
+	if req.PasswordLoginDisabled != nil {
+		updates["password_login_disabled"] = *req.PasswordLoginDisabled
+	}
 	if shouldUpdateAIAPIKey {
 		updates["ai_api_key"] = model.SecretString(aiAPIKey)
 	}
@@ -310,18 +315,19 @@ func HandleUpdateGeneralSetting(c *gin.Context) {
 
 	hasAIAPIKey := strings.TrimSpace(string(updated.AIAPIKey)) != ""
 	c.JSON(http.StatusOK, gin.H{
-		"aiAgentEnabled":     updated.AIAgentEnabled,
-		"aiProvider":         updated.AIProvider,
-		"aiModel":            updated.AIModel,
-		"aiApiKey":           "",
-		"aiApiKeyConfigured": hasAIAPIKey,
-		"aiBaseUrl":          updated.AIBaseURL,
-		"aiMaxTokens":        updated.AIMaxTokens,
-		"kubectlEnabled":     updated.KubectlEnabled,
-		"kubectlImage":       updated.KubectlImage,
-		"nodeTerminalImage":  updated.NodeTerminalImage,
-		"enableAnalytics":    updated.EnableAnalytics,
-		"enableVersionCheck": updated.EnableVersionCheck,
+		"aiAgentEnabled":        updated.AIAgentEnabled,
+		"aiProvider":            updated.AIProvider,
+		"aiModel":               updated.AIModel,
+		"aiApiKey":              "",
+		"aiApiKeyConfigured":    hasAIAPIKey,
+		"aiBaseUrl":             updated.AIBaseURL,
+		"aiMaxTokens":           updated.AIMaxTokens,
+		"kubectlEnabled":        updated.KubectlEnabled,
+		"kubectlImage":          updated.KubectlImage,
+		"nodeTerminalImage":     updated.NodeTerminalImage,
+		"enableAnalytics":       updated.EnableAnalytics,
+		"enableVersionCheck":    updated.EnableVersionCheck,
+		"passwordLoginDisabled": updated.PasswordLoginDisabled,
 	})
 }
 

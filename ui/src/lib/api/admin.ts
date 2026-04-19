@@ -354,6 +354,7 @@ export interface GeneralSetting {
   nodeTerminalImage: string
   enableAnalytics: boolean
   enableVersionCheck: boolean
+  passwordLoginDisabled: boolean
 }
 
 export interface GeneralSettingUpdateRequest {
@@ -368,6 +369,7 @@ export interface GeneralSettingUpdateRequest {
   nodeTerminalImage?: string
   enableAnalytics?: boolean
   enableVersionCheck?: boolean
+  passwordLoginDisabled?: boolean
 }
 
 export type CredentialProvider = 'password' | 'ldap'
