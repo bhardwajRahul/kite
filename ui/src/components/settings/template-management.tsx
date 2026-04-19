@@ -52,7 +52,7 @@ export function TemplateManagement() {
   })
 
   const createMutation = useMutation({
-    mutationFn: (data: Omit<ResourceTemplate, 'ID'>) => createTemplate(data),
+    mutationFn: (data: Omit<ResourceTemplate, 'id'>) => createTemplate(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['templates'] })
       toast.success(
@@ -139,7 +139,7 @@ export function TemplateManagement() {
     }
 
     if (editingTemplate) {
-      updateMutation.mutate({ id: editingTemplate.ID, data: formData })
+      updateMutation.mutate({ id: editingTemplate.id, data: formData })
     } else {
       createMutation.mutate(formData)
     }
@@ -147,7 +147,7 @@ export function TemplateManagement() {
 
   const handleDelete = async () => {
     if (!deletingTemplate) return
-    deleteMutation.mutate(deletingTemplate.ID)
+    deleteMutation.mutate(deletingTemplate.id)
   }
 
   const columns = useMemo<ColumnDef<ResourceTemplate>[]>(

@@ -619,7 +619,7 @@ export const fetchTemplates = async (): Promise<ResourceTemplate[]> => {
 }
 
 export const createTemplate = async (
-  data: Omit<ResourceTemplate, 'ID'>
+  data: Omit<ResourceTemplate, 'id'>
 ): Promise<ResourceTemplate> => {
   return apiClient.post<ResourceTemplate>('/admin/templates/', data)
 }

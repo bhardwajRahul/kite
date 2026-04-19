@@ -442,7 +442,7 @@ export interface AuditLogResponse {
   size: number
 }
 export interface ResourceTemplate {
-  ID: number
+  id: number
   name: string
   description: string
   yaml: string
