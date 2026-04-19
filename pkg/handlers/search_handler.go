@@ -15,6 +15,7 @@ import (
 	"github.com/zxh326/kite/pkg/common"
 	"github.com/zxh326/kite/pkg/handlers/resources"
 	"github.com/zxh326/kite/pkg/middleware"
+	"github.com/zxh326/kite/pkg/model"
 	"github.com/zxh326/kite/pkg/utils"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/klog/v2"
@@ -52,8 +53,8 @@ func NewSearchHandler() *SearchHandler {
 	}
 }
 
-func (h *SearchHandler) createCacheKey(clusterName, query string, limit int) string {
-	return fmt.Sprintf("search:%s:%d:%s", clusterName, limit, normalizeSearchQuery(query))
+func (h *SearchHandler) createCacheKey(clusterName, userKey, query string, limit int) string {
+	return fmt.Sprintf("search:%s:%s:%d:%s", clusterName, userKey, limit, normalizeSearchQuery(query))
 }
 
 func (h *SearchHandler) Search(c *gin.Context, query string, limit int) ([]common.SearchResult, error) {
@@ -119,7 +120,8 @@ func (h *SearchHandler) Search(c *gin.Context, query string, limit int) ([]commo
 	// Only cache results when no failure (panic or error) occurred — avoids
 	// caching incomplete results that would be served as valid 200 OK for the TTL.
 	if !hadFailure.Load() {
-		h.cache.Add(h.createCacheKey(getSearchClusterName(c), query, limit), allResults)
+		user := c.MustGet("user").(model.User)
+		h.cache.Add(h.createCacheKey(getSearchClusterName(c), user.Key(), query, limit), allResults)
 	}
 	return allResults, nil
 }
@@ -140,7 +142,8 @@ func (h *SearchHandler) GlobalSearch(c *gin.Context) {
 	}
 	limit = normalizeSearchLimit(limit)
 
-	cacheKey := h.createCacheKey(getSearchClusterName(c), query, limit)
+	user := c.MustGet("user").(model.User)
+	cacheKey := h.createCacheKey(getSearchClusterName(c), user.Key(), query, limit)
 
 	if cachedResults, found := h.cache.Get(cacheKey); found {
 		response := SearchResponse{

@@ -13,6 +13,7 @@ import (
 	"github.com/zxh326/kite/pkg/common"
 	"github.com/zxh326/kite/pkg/handlers/resources"
 	"github.com/zxh326/kite/pkg/middleware"
+	"github.com/zxh326/kite/pkg/model"
 )
 
 func TestNormalizeSearchQuery(t *testing.T) {
@@ -115,6 +116,7 @@ func TestGlobalSearchNegativeLimitDoesNotPanic(t *testing.T) {
 	rec := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(rec)
 	ctx.Request = httptest.NewRequest(http.MethodGet, "/search?q=po&limit=-1", nil)
+	ctx.Set("user", model.AnonymousUser)
 
 	handler := NewSearchHandler()
 
@@ -188,6 +190,7 @@ func newSearchContext(t *testing.T, clusterName string) *gin.Context {
 	if clusterName != "" {
 		ctx.Set(middleware.ClusterNameKey, clusterName)
 	}
+	ctx.Set("user", model.AnonymousUser)
 	return ctx
 }
 
@@ -212,6 +215,7 @@ func performGlobalSearch(t *testing.T, handler *SearchHandler, clusterName, targ
 	if clusterName != "" {
 		ctx.Set(middleware.ClusterNameKey, clusterName)
 	}
+	ctx.Set("user", model.AnonymousUser)
 
 	handler.GlobalSearch(ctx)
 
