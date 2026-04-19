@@ -9,6 +9,7 @@ Kite supports multiple user management methods, combining OAuth with local passw
 For how to configure OAuth, see [OAuth Configuration Guide](./oauth-setup)
 
 - **Password Users**: Login through username and password.
+- **API Keys**: Used for scripts, CI/CD, or external systems calling Kite APIs. See [API Authentication](../api/authentication).
 
 ## User Management
 

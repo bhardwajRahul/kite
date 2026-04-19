@@ -33,6 +33,7 @@ export default defineConfig({
           { text: "首页", link: "/zh/" },
           { text: "指南", link: "/zh/guide/" },
           { text: "配置", link: "/zh/config/" },
+          { text: "API", link: "/zh/api/authentication" },
           { text: "常见问题", link: "/zh/faq" },
         ],
         editLink: {
@@ -71,6 +72,7 @@ export default defineConfig({
       { text: "Home", link: "/" },
       { text: "Guide", link: "/guide/" },
       { text: "Configuration", link: "/config/" },
+      { text: "API", link: "/api/authentication" },
       { text: "FAQ", link: "/faq" },
     ],
 
@@ -114,6 +116,28 @@ export default defineConfig({
           link: "/faq",
         },
       ],
+      "/api/": [
+        {
+          text: "Authentication",
+          link: "/api/authentication",
+        },
+        {
+          text: "Resources",
+          link: "/api/resources",
+        },
+        {
+          text: "Cluster Management",
+          link: "/api/cluster-management",
+        },
+        {
+          text: "RBAC Management",
+          link: "/api/rbac-management",
+        },
+        {
+          text: "User Management",
+          link: "/api/user-management",
+        },
+      ],
       "/zh/": [
         {
           text: "介绍",
@@ -151,6 +175,28 @@ export default defineConfig({
         {
           text: "常见问题",
           link: "/zh/faq",
+        },
+      ],
+      "/zh/api/": [
+        {
+          text: "认证",
+          link: "/zh/api/authentication",
+        },
+        {
+          text: "资源操作",
+          link: "/zh/api/resources",
+        },
+        {
+          text: "集群管理",
+          link: "/zh/api/cluster-management",
+        },
+        {
+          text: "RBAC 管理",
+          link: "/zh/api/rbac-management",
+        },
+        {
+          text: "用户管理",
+          link: "/zh/api/user-management",
         },
       ],
     },
