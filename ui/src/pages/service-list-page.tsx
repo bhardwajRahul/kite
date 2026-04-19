@@ -4,7 +4,11 @@ import { Service } from 'kubernetes-types/core/v1'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
-import { createSearchFilter, getServiceExternalIP } from '@/lib/k8s'
+import {
+  createSearchFilter,
+  getServiceExternalIP,
+  getServicePortSearchValues,
+} from '@/lib/k8s'
 import { formatDate } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { ResourceTable } from '@/components/resource-table'
@@ -12,7 +16,8 @@ import { ResourceTable } from '@/components/resource-table'
 const serviceSearchFilter = createSearchFilter<Service>(
   (s) => s.metadata?.name,
   (s) => s.spec?.type,
-  (s) => s.spec?.clusterIP
+  (s) => s.spec?.clusterIP,
+  (s) => getServicePortSearchValues(s)
 )
 
 export function ServiceListPage() {
