@@ -282,6 +282,10 @@
     "watch": "监听",
     "namespace": "命名空间"
   },
+  "errors": {
+    "crdNotInstalledTitle": "资源类型不可用",
+    "crdNotInstalled": "此集群中未安装 {{kind}} 资源类型 ({{version}})。请安装所需的 CRD 以使用此功能。"
+  },
   "rbac": {
     "title": "角色管理",
     "noPermissionCluster": "用户 {{user}} 没有权限在集群 {{cluster}} 上执行 {{verb}} {{resource}}",

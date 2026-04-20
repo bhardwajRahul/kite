@@ -264,6 +264,10 @@
     "watch": "Watch",
     "namespace": "Namespace"
   },
+  "errors": {
+    "crdNotInstalledTitle": "Resource Type Not Available",
+    "crdNotInstalled": "The {{kind}} resource type ({{version}}) is not installed in this cluster. Install the required CRD to use this feature."
+  },
   "rbac": {
     "noPermissionCluster": "User {{user}} does not have permission to {{verb}} {{resource}} on cluster {{cluster}}",
     "noPermissionNamespace": "User {{user}} does not have permission to {{verb}} {{resource}} in namespace {{namespace}} on cluster {{cluster}}",

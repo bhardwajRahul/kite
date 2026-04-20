@@ -1,6 +1,6 @@
 import type { NodeCondition } from 'kubernetes-types/core/v1'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
+import type { TFunction } from 'i18next'
 import type { PodMetrics } from '@/types/api'
 
 import {
@@ -13,6 +13,7 @@ import {
   formatMemory,
   formatPodMetrics,
   getAge,
+  isCRDNotInstalledError,
   parseBytes,
   parseRBACError,
   translateError,
@@ -200,17 +201,58 @@ describe('RBAC helpers', () => {
       return key
     })
 
+    const tf = t as unknown as TFunction
+
     expect(
       translateError(
         new Error(
           'user alice does not have permission to get pods in namespace All on cluster cluster-a'
         ),
-        t
+        tf
       )
     ).toBe('alice|read|Pods|All|cluster-a')
 
-    expect(translateError(new Error('boom'), t)).toBe('boom')
-    expect(translateError({ reason: 'nope' }, t)).toBe('common:[object Object]')
+    expect(translateError(new Error('boom'), tf)).toBe('boom')
+    expect(translateError({ reason: 'nope' }, tf)).toBe('common:[object Object]')
+  })
+
+  it('translates CRD not installed errors', () => {
+    const t = vi.fn((key: string, options?: Record<string, string>) => {
+      if (key === 'errors.crdNotInstalled') {
+        return `crd:${options?.kind}:${options?.version}`
+      }
+      return key
+    })
+    const tf = t as unknown as TFunction
+
+    expect(
+      translateError(
+        new Error(
+          'no matches for kind "Gateway" in version "gateway.networking.k8s.io/v1"'
+        ),
+        tf
+      )
+    ).toBe('crd:Gateway:gateway.networking.k8s.io/v1')
+  })
+})
+
+describe('isCRDNotInstalledError', () => {
+  it('detects CRD not installed errors', () => {
+    expect(
+      isCRDNotInstalledError(
+        'no matches for kind "Gateway" in version "gateway.networking.k8s.io/v1"'
+      )
+    ).toBe(true)
+    expect(
+      isCRDNotInstalledError(
+        'no matches for kind "HTTPRoute" in version "gateway.networking.k8s.io/v1"'
+      )
+    ).toBe(true)
+  })
+
+  it('returns false for unrelated errors', () => {
+    expect(isCRDNotInstalledError('connection refused')).toBe(false)
+    expect(isCRDNotInstalledError('')).toBe(false)
   })
 })
 

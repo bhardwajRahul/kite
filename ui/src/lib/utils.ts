@@ -209,12 +209,28 @@ export function isRBACError(errorMessage: string): boolean {
   return !!parseRBACError(errorMessage)
 }
 
+const CRD_NOT_INSTALLED_RE =
+  /no matches for kind "([^"]+)" in version "([^"]+)"/
+
+export function isCRDNotInstalledError(errorMessage: string): boolean {
+  return CRD_NOT_INSTALLED_RE.test(errorMessage)
+}
+
 export function translateError(error: Error | unknown, t: TFunction): string {
   if (!(error instanceof Error)) {
     return t('common.error', {
       error: String(error),
     })
   }
+
+  const crdMatch = CRD_NOT_INSTALLED_RE.exec(error.message)
+  if (crdMatch) {
+    return t('errors.crdNotInstalled', {
+      kind: crdMatch[1],
+      version: crdMatch[2],
+    })
+  }
+
   const rbacInfo = parseRBACError(error.message)
 
   if (!rbacInfo) {
