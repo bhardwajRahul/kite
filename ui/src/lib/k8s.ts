@@ -1,4 +1,4 @@
-import * as jsonpath from 'jsonpath'
+import jsonpath from 'jsonpath'
 import { Deployment } from 'kubernetes-types/apps/v1'
 import { Container, Pod, Service } from 'kubernetes-types/core/v1'
 import { ObjectMeta } from 'kubernetes-types/meta/v1'
