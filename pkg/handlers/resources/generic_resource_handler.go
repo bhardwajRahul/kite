@@ -66,6 +66,10 @@ func (h *GenericResourceHandler[T, V]) getGroupKind() schema.GroupKind {
 func (h *GenericResourceHandler[T, V]) recordHistory(c *gin.Context, opType string, prev, curr T, success bool, errMsg string) {
 	cs := c.MustGet("cluster").(*cluster.ClientSet)
 	user := c.MustGet("user").(model.User)
+	resourceYAML := h.ToYAML(curr)
+	if opType == "delete" {
+		resourceYAML = ""
+	}
 
 	history := model.ResourceHistory{
 		ClusterName:   cs.Name,
@@ -73,7 +77,7 @@ func (h *GenericResourceHandler[T, V]) recordHistory(c *gin.Context, opType stri
 		ResourceName:  curr.GetName(),
 		Namespace:     curr.GetNamespace(),
 		OperationType: opType,
-		ResourceYAML:  h.ToYAML(curr),
+		ResourceYAML:  resourceYAML,
 		PreviousYAML:  h.ToYAML(prev),
 		Success:       success,
 		ErrorMessage:  errMsg,

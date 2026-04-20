@@ -166,6 +166,13 @@ func (h *GenericResourceHandler[T, V]) Delete(c *gin.Context) {
 		return
 	}
 
+	prevObj := resource.DeepCopyObject().(T)
+	success := false
+	var errMsg string
+	defer func() {
+		h.recordHistory(c, "delete", prevObj, resource, success, errMsg)
+	}()
+
 	cascadeDelete := c.Query("cascade") != "false"
 	forceDelete := c.Query("force") == "true"
 	wait := c.Query("wait") != "false"
@@ -184,6 +191,7 @@ func (h *GenericResourceHandler[T, V]) Delete(c *gin.Context) {
 		deleteOptions.GracePeriodSeconds = &gracePeriodSeconds
 	}
 	if err := cs.K8sClient.Delete(ctx, resource, deleteOptions); err != nil {
+		errMsg = err.Error()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -203,9 +211,11 @@ func (h *GenericResourceHandler[T, V]) Delete(c *gin.Context) {
 					klog.Errorf("Failed to remove finalizers: %v", err)
 				}
 			}
+			errMsg = err.Error()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 	}
+	success = true
 	c.JSON(http.StatusOK, gin.H{"message": "deleted successfully"})
 }
