@@ -267,9 +267,15 @@ export interface ApplyResourceRequest {
 
 export interface ApplyResourceResponse {
   message: string
-  kind: string
-  name: string
+  kind?: string
+  name?: string
   namespace?: string
+  count?: number
+  resources?: Array<{
+    kind: string
+    name: string
+    namespace?: string
+  }>
 }
 
 export const applyResource = async (

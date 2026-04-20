@@ -71,9 +71,7 @@ function CreateResourceDialogContent({
     setIsLoading(true)
     try {
       await applyResource(yamlContent)
-      toast.success(
-        t('createResource.success', 'Resource created successfully')
-      )
+      toast.success(t('createResource.success', 'Applied successfully'))
       onOpenChange(false)
     } catch (err) {
       console.error('Failed to apply resource', err)
@@ -94,8 +92,8 @@ function CreateResourceDialogContent({
       <DialogHeader>
         <DialogTitle>Create Resource</DialogTitle>
         <DialogDescription>
-          Paste any Kubernetes resource YAML configuration and apply it to the
-          cluster
+          Paste one or more Kubernetes resource YAML documents and apply them to
+          the cluster
         </DialogDescription>
       </DialogHeader>
 
