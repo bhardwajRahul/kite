@@ -277,7 +277,7 @@ func extractSub(userInfo map[string]interface{}) string {
 	if userid, ok := userInfo["userid"]; ok {
 		return fmt.Sprintf("%v", userid)
 	}
-	return firstClaimValue(userInfo, "id", "sub", "oid")
+	return firstClaimValue(userInfo, "id", "sub", "oid", "uid", "user_id", "open_id")
 }
 
 func extractUsername(userInfo map[string]interface{}, customClaim string) string {
