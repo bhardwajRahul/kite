@@ -34,7 +34,7 @@ type OAuthProvider struct {
 	AuthURL       string          `json:"authUrl" gorm:"type:varchar(255)"`
 	TokenURL      string          `json:"tokenUrl" gorm:"type:varchar(255)"`
 	UserInfoURL   string          `json:"userInfoUrl" gorm:"type:varchar(255)"`
-	Scopes        string          `json:"scopes" gorm:"type:varchar(255);default:'openid,profile,email'"`
+	Scopes        string          `json:"scopes" gorm:"type:varchar(255)"`
 	Issuer        string          `json:"issuer" gorm:"type:varchar(255)"`
 	Enabled       bool            `json:"enabled" gorm:"type:boolean;default:true"`
 	UsernameClaim string          `json:"usernameClaim" gorm:"type:varchar(255)"`
