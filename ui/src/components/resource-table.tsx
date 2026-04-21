@@ -88,6 +88,7 @@ export function ResourceTable<T>({
     defaultHiddenColumns,
   })
   const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteProgress, setDeleteProgress] = useState({ done: 0, total: 0 })
   const {
     resourceType: resolvedResourceType,
     data,
@@ -260,6 +261,9 @@ export function ResourceTable<T>({
       .getSelectedRowModel()
       .rows.map((row) => row.original)
 
+    const total = selectedRows.length
+    setDeleteProgress({ done: 0, total })
+
     const deletePromises = selectedRows.map((row) => {
       const metadata = (
         row as { metadata?: { name?: string; namespace?: string } }
@@ -268,14 +272,17 @@ export function ResourceTable<T>({
       const namespace = clusterScope ? undefined : metadata?.namespace
 
       if (!name) {
+        setDeleteProgress((prev) => ({ ...prev, done: prev.done + 1 }))
         return Promise.resolve()
       }
 
       return deleteResource(resolvedResourceType, name, namespace)
         .then(() => {
+          setDeleteProgress((prev) => ({ ...prev, done: prev.done + 1 }))
           toast.success(t('resourceTable.deleteSuccess', { name }))
         })
         .catch((error) => {
+          setDeleteProgress((prev) => ({ ...prev, done: prev.done + 1 }))
           console.error(`Failed to delete ${name}:`, error)
           toast.error(
             t('resourceTable.deleteFailed', { name, error: error.message })
@@ -453,7 +460,12 @@ export function ResourceTable<T>({
               onClick={handleBatchDelete}
               disabled={isDeleting}
             >
-              {isDeleting ? t('resourceTable.deleting') : t('common.delete')}
+              {isDeleting
+                ? t('resourceTable.deletingProgress', {
+                    done: deleteProgress.done,
+                    total: deleteProgress.total,
+                  })
+                : t('common.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

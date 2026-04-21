@@ -42,6 +42,24 @@ function installGlobals() {
     value: sessionStorageMock,
   })
 
+  Object.defineProperty(globalThis, 'ResizeObserver', {
+    configurable: true,
+    value: class ResizeObserver {
+      observe = vi.fn()
+      unobserve = vi.fn()
+      disconnect = vi.fn()
+    },
+  })
+
+  Object.defineProperty(globalThis, 'IntersectionObserver', {
+    configurable: true,
+    value: class IntersectionObserver {
+      observe = vi.fn()
+      unobserve = vi.fn()
+      disconnect = vi.fn()
+    },
+  })
+
   Object.defineProperty(window, 'matchMedia', {
     writable: true,
     value: vi.fn().mockImplementation((query: string) => ({

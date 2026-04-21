@@ -259,6 +259,7 @@
     "confirmDeletion": "Confirm Deletion",
     "confirmDeletionMessage": "Are you sure you want to delete {{count}} selected {{resourceName}}? This action cannot be undone.",
     "deleting": "Deleting...",
+    "deletingProgress": "Deleting... ({{done}}/{{total}})",
     "deleteSuccess": "Deleted {{name}} successfully",
     "deleteFailed": "Failed to delete {{name}}: {{error}}",
     "watch": "Watch",
