@@ -273,30 +273,65 @@ func (g *GenericProvider) fetchUserInfo(accessToken string) (map[string]interfac
 	return userInfo, nil
 }
 
+// unwrapDataField returns the nested "data" map if present.
+// This handles providers (e.g. Feishu/Lark) that wrap user info under a "data" key.
+// The second return value indicates whether unwrapping occurred.
+func unwrapDataField(userInfo map[string]interface{}) (map[string]interface{}, bool) {
+	if data, ok := userInfo["data"]; ok {
+		if nested, ok := data.(map[string]interface{}); ok {
+			return nested, true
+		}
+	}
+	return userInfo, false
+}
+
 func extractSub(userInfo map[string]interface{}) string {
 	if userid, ok := userInfo["userid"]; ok {
 		return fmt.Sprintf("%v", userid)
 	}
-	return firstClaimValue(userInfo, "id", "sub", "oid", "uid", "user_id", "open_id")
+	if v := firstClaimValue(userInfo, "id", "sub", "oid", "uid", "user_id", "open_id"); v != "" {
+		return v
+	}
+	if nested, ok := unwrapDataField(userInfo); ok {
+		return extractSub(nested)
+	}
+	return ""
 }
 
 func extractUsername(userInfo map[string]interface{}, customClaim string) string {
 	if value := customClaimValue(userInfo, customClaim); value != "" {
 		return value
 	}
-	return firstClaimValue(userInfo, "username", "login", "userPrincipalName", "preferred_username", "upn", "email")
+	if v := firstClaimValue(userInfo, "username", "login", "userPrincipalName", "preferred_username", "upn", "email"); v != "" {
+		return v
+	}
+	if nested, ok := unwrapDataField(userInfo); ok {
+		return extractUsername(nested, customClaim)
+	}
+	return ""
 }
 
 func extractName(userInfo map[string]interface{}) string {
-	name := firstClaimValue(userInfo, "name", "displayName")
 	if nickname, ok := userInfo["nickname"]; ok {
 		return fmt.Sprintf("%v", nickname)
 	}
-	return name
+	if v := firstClaimValue(userInfo, "name", "displayName"); v != "" {
+		return v
+	}
+	if nested, ok := unwrapDataField(userInfo); ok {
+		return extractName(nested)
+	}
+	return ""
 }
 
 func extractAvatarURL(userInfo map[string]interface{}) string {
-	return firstClaimValue(userInfo, "avatar_url", "picture")
+	if v := firstClaimValue(userInfo, "avatar_url", "picture"); v != "" {
+		return v
+	}
+	if nested, ok := unwrapDataField(userInfo); ok {
+		return extractAvatarURL(nested)
+	}
+	return ""
 }
 
 func customClaimValue(userInfo map[string]interface{}, claim string) string {
