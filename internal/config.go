@@ -248,9 +248,6 @@ func applyOAuth(providers []OAuthConfig) error {
 				enabled = *p.Enabled
 			}
 			scopes := p.Scopes
-			if scopes == "" {
-				scopes = "openid,profile,email"
-			}
 			provider := &model.OAuthProvider{
 				Name:          model.LowerCaseString(strings.TrimSpace(p.Name)),
 				ClientID:      p.ClientID,

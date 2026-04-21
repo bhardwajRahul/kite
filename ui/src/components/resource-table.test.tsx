@@ -1,7 +1,7 @@
 /// <reference types="@testing-library/jest-dom" />
+import { createColumnHelper } from '@tanstack/react-table'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createColumnHelper } from '@tanstack/react-table'
 import { describe, expect, it, vi } from 'vitest'
 
 import { ResourceTable } from './resource-table'
@@ -168,8 +168,10 @@ describe('ResourceTable batch delete progress', () => {
   })
 
   it('counts failed deletions toward the progress total', async () => {
-    const resolvers: Array<{ resolve: () => void; reject: (e: Error) => void }> =
-      []
+    const resolvers: Array<{
+      resolve: () => void
+      reject: (e: Error) => void
+    }> = []
     mockDeleteResource.mockImplementation(
       () =>
         new Promise<void>((resolve, reject) =>

@@ -1,6 +1,7 @@
+import type { TFunction } from 'i18next'
 import type { NodeCondition } from 'kubernetes-types/core/v1'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { TFunction } from 'i18next'
+
 import type { PodMetrics } from '@/types/api'
 
 import {
@@ -213,7 +214,9 @@ describe('RBAC helpers', () => {
     ).toBe('alice|read|Pods|All|cluster-a')
 
     expect(translateError(new Error('boom'), tf)).toBe('boom')
-    expect(translateError({ reason: 'nope' }, tf)).toBe('common:[object Object]')
+    expect(translateError({ reason: 'nope' }, tf)).toBe(
+      'common:[object Object]'
+    )
   })
 
   it('translates CRD not installed errors', () => {

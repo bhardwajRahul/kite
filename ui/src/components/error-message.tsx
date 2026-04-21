@@ -1,7 +1,11 @@
 import { PackageX, RotateCcw, ShieldX, XCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { isCRDNotInstalledError, isRBACError, translateError } from '@/lib/utils'
+import {
+  isCRDNotInstalledError,
+  isRBACError,
+  translateError,
+} from '@/lib/utils'
 
 import { Button } from './ui/button'
 
