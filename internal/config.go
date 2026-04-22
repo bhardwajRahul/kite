@@ -95,7 +95,7 @@ func LoadConfigFromFile(path string) {
 
 	data, err := os.ReadFile(path)
 	if err != nil {
-		klog.Warningf("Failed to read config file %s: %v", path, err)
+		klog.Fatalf("Failed to read config file %s: %v", path, err)
 		return
 	}
 

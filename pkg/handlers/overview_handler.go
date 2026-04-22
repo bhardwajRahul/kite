@@ -166,10 +166,6 @@ func GetOverview(c *gin.Context) {
 	c.JSON(http.StatusOK, overview)
 }
 
-func GetManagedSections(c *gin.Context) {
-	c.JSON(http.StatusOK, common.ManagedSections)
-}
-
 func InitCheck(c *gin.Context) {
 	step := 0
 	uc, _ := model.CountUsers()

@@ -12,7 +12,6 @@ import {
   useGeneralSetting,
   useLDAPSetting,
 } from '@/lib/api'
-import { useManagedSections } from '@/lib/api/system'
 import { translateError } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,7 +19,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 
-import { ManagedBanner } from './managed-banner'
 import { OAuthProviderManagement } from './oauth-provider-management'
 
 type AuthenticationFormData = LDAPSetting
@@ -70,8 +68,6 @@ export function AuthenticationManagement() {
   const queryClient = useQueryClient()
   const { data, error, isError, isLoading, refetch } = useLDAPSetting()
   const { data: generalSetting } = useGeneralSetting()
-  const { data: managedSections } = useManagedSections()
-  const isLdapManaged = !!managedSections?.ldap
   const [formData, setFormData] = useState<AuthenticationFormData>(
     createDefaultSettings
   )
@@ -89,7 +85,7 @@ export function AuthenticationManagement() {
 
   const mutation = useMutation({
     mutationFn: (params: {
-      ldap?: LDAPSettingUpdateRequest
+      ldap: LDAPSettingUpdateRequest
       passwordLoginDisabled: boolean
     }) => {
       const promises: Promise<unknown>[] = [
@@ -97,10 +93,8 @@ export function AuthenticationManagement() {
           ...generalSetting!,
           passwordLoginDisabled: params.passwordLoginDisabled,
         }),
+        updateLDAPSetting(params.ldap),
       ]
-      if (params.ldap) {
-        promises.push(updateLDAPSetting(params.ldap))
-      }
       return Promise.all(promises)
     },
     onSuccess: () => {
@@ -151,7 +145,7 @@ export function AuthenticationManagement() {
     }
 
     mutation.mutate({
-      ldap: isLdapManaged ? undefined : payload,
+      ldap: payload,
       passwordLoginDisabled: !passwordLoginEnabled,
     })
   }
@@ -189,7 +183,6 @@ export function AuthenticationManagement() {
 
   return (
     <div className="space-y-4">
-      {isLdapManaged && <ManagedBanner />}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -263,7 +256,6 @@ export function AuthenticationManagement() {
                 onCheckedChange={(checked) =>
                   setFormData((prev) => ({ ...prev, enabled: checked }))
                 }
-                disabled={isLdapManaged}
               />
             </div>
 
@@ -287,7 +279,6 @@ export function AuthenticationManagement() {
                         }))
                       }
                       placeholder="ldaps://ldap.example.com:636"
-                      disabled={isLdapManaged}
                     />
                   </div>
 
@@ -316,7 +307,6 @@ export function AuthenticationManagement() {
                             useStartTLS: checked,
                           }))
                         }
-                        disabled={isLdapManaged}
                       />
                     </div>
                   </div>
@@ -338,7 +328,6 @@ export function AuthenticationManagement() {
                         }))
                       }
                       placeholder="cn=svc-kite,ou=services,dc=example,dc=com"
-                      disabled={isLdapManaged}
                     />
                   </div>
 
@@ -367,7 +356,6 @@ export function AuthenticationManagement() {
                             )
                           : ''
                       }
-                      disabled={isLdapManaged}
                     />
                   </div>
 
@@ -388,7 +376,6 @@ export function AuthenticationManagement() {
                         }))
                       }
                       placeholder="ou=users,dc=example,dc=com"
-                      disabled={isLdapManaged}
                     />
                   </div>
 
@@ -408,7 +395,6 @@ export function AuthenticationManagement() {
                           userFilter: e.target.value,
                         }))
                       }
-                      disabled={isLdapManaged}
                     />
                   </div>
 
@@ -428,7 +414,6 @@ export function AuthenticationManagement() {
                           usernameAttribute: e.target.value,
                         }))
                       }
-                      disabled={isLdapManaged}
                     />
                   </div>
 
@@ -448,7 +433,6 @@ export function AuthenticationManagement() {
                           displayNameAttribute: e.target.value,
                         }))
                       }
-                      disabled={isLdapManaged}
                     />
                   </div>
 
@@ -469,7 +453,6 @@ export function AuthenticationManagement() {
                         }))
                       }
                       placeholder="ou=groups,dc=example,dc=com"
-                      disabled={isLdapManaged}
                     />
                   </div>
 
@@ -489,7 +472,6 @@ export function AuthenticationManagement() {
                           groupFilter: e.target.value,
                         }))
                       }
-                      disabled={isLdapManaged}
                     />
                   </div>
 
@@ -509,7 +491,6 @@ export function AuthenticationManagement() {
                           groupNameAttribute: e.target.value,
                         }))
                       }
-                      disabled={isLdapManaged}
                     />
                   </div>
                 </div>

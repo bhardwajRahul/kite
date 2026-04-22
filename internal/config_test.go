@@ -422,39 +422,6 @@ func TestLoadConfigFromFile_StartupOverwrite(t *testing.T) {
 	}
 }
 
-// TestManagedSectionsEndpoint tests the GET /api/v1/managed-sections API endpoint.
-func TestManagedSectionsEndpoint(t *testing.T) {
-	saveManagedSections(t)
-	common.ManagedSections["clusters"] = true
-	common.ManagedSections["oauth"] = true
-
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	r.GET("/api/v1/managed-sections", handlers.GetManagedSections)
-
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/managed-sections", nil)
-	r.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
-	}
-
-	var result map[string]bool
-	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	if !result["clusters"] {
-		t.Error("expected clusters=true in response")
-	}
-	if !result["oauth"] {
-		t.Error("expected oauth=true in response")
-	}
-	if result["ldap"] {
-		t.Error("ldap should not be in response")
-	}
-}
-
 // TestInitCheckWithManagedClusters tests that InitCheck returns initialized=true
 // when clusters are managed AND a user exists.
 func TestInitCheckWithManagedClusters(t *testing.T) {
