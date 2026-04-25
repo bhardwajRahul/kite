@@ -1,0 +1,87 @@
+name: Deploy Demo
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: deploy-demo
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [demo]
+
+env:
+  GO_VERSION: "1.25"
+  NODE_VERSION: "24"
+
+jobs:
+  deploy:
+    name: Build and Deploy Demo
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'kite-org' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+          cache-dependency-path: ui/pnpm-lock.yaml
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          check-latest: true
+
+      - name: Install deps
+        run: make deps
+
+      - name: Build
+        run: make cross-compile
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile.binary
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/kite:demo
+          labels: runnumber=${{ github.run_id }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Restart kite deployment
+        env:
+          KITE_HOST: ${{ secrets.KITE_DEMO_HOST }}
+          KITE_AUTH: ${{ secrets.KITE_DEMO_AUTH }}
+        run: |
+          RESTART_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          curl -X PATCH "$KITE_HOST/api/v1/deployments/kite/kite" \
+            -H "Authorization: $KITE_AUTH" \
+            -H "Content-Type: application/json" \
+            -d "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"kite.kubernetes.io/restartedAt\":\"$RESTART_TIME\"}}}}}"
