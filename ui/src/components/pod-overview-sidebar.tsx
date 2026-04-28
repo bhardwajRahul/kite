@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { IconBox, IconExternalLink } from '@tabler/icons-react'
 import { Event as KubernetesEvent, Pod } from 'kubernetes-types/core/v1'
 import { useTranslation } from 'react-i18next'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import type { RelatedResources } from '@/types/api'
 import { useRelatedResources } from '@/lib/api'
@@ -12,7 +13,11 @@ import {
   isStandardK8sResource,
   type PodPort,
 } from '@/lib/k8s'
-import { getResourceMetadata, resourceIconMap } from '@/lib/resource-catalog'
+import {
+  getResourceDetailPath,
+  getResourceMetadata,
+  resourceIconMap,
+} from '@/lib/resource-catalog'
 import { withSubPath } from '@/lib/subpath'
 import { cn, getAge } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -25,6 +30,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 type TranslationFn = ReturnType<typeof useTranslation>['t']
 
@@ -58,10 +64,13 @@ export function PodOverviewSidebar({
         <PodPortsCard ports={ports} namespace={namespace} name={name} />
       ) : null}
       {Object.keys(labels).length > 0 ? (
-        <MetadataListCard title="pods.labels" entries={labels} />
+        <MetadataListCard title="common.fields.labels" entries={labels} />
       ) : null}
       {Object.keys(annotations).length > 0 ? (
-        <MetadataListCard title="pods.annotations" entries={annotations} />
+        <MetadataListCard
+          title="common.fields.annotations"
+          entries={annotations}
+        />
       ) : null}
     </div>
   )
@@ -80,7 +89,7 @@ export function CompactRelatedResourcesCard({
     <Card className="gap-0 overflow-hidden rounded-lg border-border/70 py-0 shadow-none">
       <CardHeader className="px-3 py-2.5 !pb-2.5">
         <CardTitle className="text-balance text-sm">
-          {t('pods.relatedResources')} ({resources.length})
+          {t('common.fields.relatedResources')} ({resources.length})
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
@@ -89,14 +98,14 @@ export function CompactRelatedResourcesCard({
             {t('pods.loadingRelatedResources')}
           </div>
         ) : resources.length > 0 ? (
-          <div className="max-h-64 divide-y divide-border/70 overflow-y-auto">
+          <ScrollArea className="max-h-64 divide-y divide-border/70">
             {resources.map((resource, index) => (
               <CompactRelatedResourceRow
                 key={`${resource.type}-${resource.namespace || ''}-${resource.name}-${index}`}
                 resource={resource}
               />
             ))}
-          </div>
+          </ScrollArea>
         ) : (
           <div className="px-3 py-4 text-sm text-muted-foreground">
             {t('pods.noRelatedResources')}
@@ -113,15 +122,17 @@ function CompactRelatedResourceRow({
   resource: RelatedResources
 }) {
   const [open, setOpen] = useState(false)
+  const [searchParams] = useSearchParams()
   const metadata = getResourceMetadata(resource.type)
   const Icon = metadata?.icon ? resourceIconMap[metadata.icon] : IconBox
   const path = useMemo(() => getRelatedResourcePath(resource), [resource])
+  const isIframe = searchParams.get('iframe') === 'true'
   const rowContent = (
     <>
       <span className="inline-flex min-w-0 items-center gap-2 text-muted-foreground">
         <Icon className="size-3.5 shrink-0" />
         <span className="truncate">
-          {metadata?.singularLabel || resource.type}
+          {metadata?.shortLabel || metadata?.singularLabel || resource.type}
         </span>
       </span>
       <span className="inline-flex min-w-0 items-center gap-1.5">
@@ -139,6 +150,17 @@ function CompactRelatedResourceRow({
     )
   }
 
+  if (isIframe) {
+    return (
+      <Link
+        to={`${path}?iframe=true`}
+        className="grid w-full min-w-0 cursor-pointer grid-cols-[7rem_minmax(0,1fr)] items-center gap-2 px-3 py-2 text-left text-xs hover:bg-muted/40"
+      >
+        {rowContent}
+      </Link>
+    )
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -149,7 +171,7 @@ function CompactRelatedResourceRow({
           {rowContent}
         </button>
       </DialogTrigger>
-      <DialogContent className="!h-[calc(100dvh-1rem)] !max-w-[calc(100vw-1rem)] flex min-h-0 flex-col gap-0 p-0 md:!h-[80%] md:!max-w-[60%]">
+      <DialogContent className="!h-[calc(100dvh-1rem)] !max-w-[calc(100vw-1rem)] flex min-h-0 flex-col gap-0 p-0 md:!h-[80%] md:!max-w-[80%]">
         <DialogHeader className="flex flex-row items-center justify-between border-b px-4 py-3 pr-14">
           <DialogTitle>{metadata?.singularLabel || resource.type}</DialogTitle>
           <a href={withSubPath(path)} target="_blank" rel="noopener noreferrer">
@@ -172,8 +194,14 @@ function CompactRelatedResourceRow({
 }
 
 function getRelatedResourcePath(resource: RelatedResources) {
+  const metadata = getResourceMetadata(resource.type)
+
   if (isStandardK8sResource(resource.type)) {
-    return `/${resource.type}/${resource.namespace ? `${resource.namespace}/` : ''}${resource.name}`
+    return getResourceDetailPath(
+      metadata?.type || resource.type,
+      resource.name,
+      resource.namespace
+    )
   }
   if (!resource.apiVersion) {
     return undefined
@@ -200,8 +228,8 @@ function PodPortsCard({
   return (
     <Card className="gap-0 overflow-hidden rounded-lg border-border/70 py-0 shadow-none">
       <CardHeader className="border-b border-border/70 px-4 py-3 !pb-3">
-        <CardTitle className="text-balance text-base">
-          {t('pods.ports')} ({ports.length})
+        <CardTitle className="text-balance text-sm">
+          {t('common.fields.ports')} ({ports.length})
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
@@ -257,7 +285,7 @@ export function MetadataListCard({
       </CardHeader>
       <CardContent className="p-0">
         {rows.length > 0 ? (
-          <div className="max-h-72 divide-y overflow-y-auto">
+          <ScrollArea className="max-h-72 divide-y">
             {rows.map(([key, value]) => (
               <div
                 key={key}
@@ -278,10 +306,10 @@ export function MetadataListCard({
                 </span>
               </div>
             ))}
-          </div>
+          </ScrollArea>
         ) : (
           <div className="px-4 py-6 text-sm text-muted-foreground">
-            {t('common.none')}
+            {t('common.values.none')}
           </div>
         )}
       </CardContent>
@@ -297,12 +325,24 @@ export function CompactEventsCard({
   isLoading: boolean
 }) {
   const { t } = useTranslation()
+  const sortedEvents = useMemo(() => {
+    return events.slice().sort((a, b) => {
+      const timeDiff = getEventTime(a).getTime() - getEventTime(b).getTime()
+      if (timeDiff !== 0) {
+        return timeDiff
+      }
+      return (
+        Number(a.metadata?.resourceVersion || 0) -
+        Number(b.metadata?.resourceVersion || 0)
+      )
+    })
+  }, [events])
 
   return (
     <Card className="gap-0 overflow-hidden rounded-lg border-border/70 py-0 shadow-none">
       <CardHeader className="px-3 py-2.5 !pb-2.5">
         <CardTitle className="text-balance text-sm">
-          {t('events.title')} ({events.length})
+          {t('events.title')} ({sortedEvents.length})
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
@@ -310,47 +350,43 @@ export function CompactEventsCard({
           <div className="px-3 py-4 text-sm text-muted-foreground">
             {t('events.loading')}
           </div>
-        ) : events.length > 0 ? (
-          <div className="max-h-56 divide-y divide-border/70 overflow-y-auto">
-            {events.map((event, index) => (
+        ) : sortedEvents.length > 0 ? (
+          <ScrollArea className="max-h-56 font-mono text-xs">
+            <div className="sticky top-0 grid grid-cols-[3.75rem_4.25rem_2.25rem_5rem_minmax(0,1fr)] gap-x-0.5 border-b border-border/70 bg-card px-2 py-1.5 font-medium text-muted-foreground">
+              <span>{t('common.fields.type')}</span>
+              <span>{t('common.fields.reason')}</span>
+              <span>{t('common.fields.age')}</span>
+              <span>{t('common.fields.from', { defaultValue: 'From' })}</span>
+              <span className="min-w-0">{t('common.fields.message')}</span>
+            </div>
+            {sortedEvents.map((event, index) => (
               <div
                 key={`${event.reason}-${event.message}-${index}`}
-                className="px-3 py-2"
+                className="grid grid-cols-[3.75rem_4.25rem_2.25rem_5rem_minmax(0,1fr)] items-start gap-x-0.5 border-b border-border/70 px-2 py-2 last:border-b-0"
               >
-                <div className="grid min-w-0 grid-cols-[4.75rem_minmax(0,1fr)_3.5rem] items-center gap-2 text-xs">
-                  <span
-                    className={cn(
-                      'inline-flex min-w-0 items-center gap-1.5 font-medium',
-                      event.type === 'Normal' && 'text-emerald-600',
-                      event.type === 'Warning' && 'text-yellow-600',
-                      event.type !== 'Normal' &&
-                        event.type !== 'Warning' &&
-                        'text-destructive'
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'size-1.5 shrink-0 rounded-full',
-                        getEventTypeDotClassName(event.type)
-                      )}
-                    />
-                    <span className="truncate">
-                      {formatEventType(event.type, t)}
-                    </span>
-                  </span>
-                  <span className="truncate font-medium">
-                    {event.reason || '-'}
-                  </span>
-                  <span className="text-right text-muted-foreground">
-                    {formatEventAge(event, t)}
-                  </span>
-                </div>
-                <div className="mt-0.5 line-clamp-1 pl-[5.25rem] text-xs leading-snug text-pretty text-muted-foreground">
+                <span
+                  className={cn(
+                    'font-medium',
+                    getEventTypeClassName(event.type)
+                  )}
+                >
+                  {formatEventType(event.type, t)}
+                </span>
+                <span className="min-w-0 break-words font-medium">
+                  {event.reason || '-'}
+                </span>
+                <span className="tabular-nums text-muted-foreground">
+                  {formatEventAge(event)}
+                </span>
+                <span className="min-w-0 break-words text-muted-foreground">
+                  {getEventSource(event)}
+                </span>
+                <span className="min-w-0 whitespace-pre-wrap break-words leading-snug text-pretty text-muted-foreground">
                   {event.message || '-'}
-                </div>
+                </span>
               </div>
             ))}
-          </div>
+          </ScrollArea>
         ) : (
           <div className="px-3 py-4 text-sm text-muted-foreground">
             {t('events.noRecentEvents')}
@@ -366,22 +402,37 @@ function formatEventType(type: string | undefined, t: TranslationFn) {
     return '-'
   }
   const key = type.charAt(0).toLowerCase() + type.slice(1)
-  return t(`events.types.${key}`, { defaultValue: type })
+  return t(`status.${key}`, { defaultValue: type })
 }
 
-function formatEventAge(event: KubernetesEvent, t: TranslationFn) {
+function formatEventAge(event: KubernetesEvent) {
   const eventTime = getEventTime(event)
-  return eventTime.getTime() > 0
-    ? t('common.timeAgo', { time: getAge(eventTime.toISOString()) })
-    : '-'
+  if (eventTime.getTime() <= 0) {
+    return '-'
+  }
+
+  const age = getAge(eventTime.toISOString())
+  if (event.count && event.count > 1 && event.firstTimestamp) {
+    return `${age} (x${event.count} over ${getAge(event.firstTimestamp)})`
+  }
+  return age
 }
 
-function getEventTypeDotClassName(type?: string) {
+function getEventSource(event: KubernetesEvent) {
+  return (
+    event.reportingComponent ||
+    event.source?.component ||
+    event.reportingInstance ||
+    '-'
+  )
+}
+
+function getEventTypeClassName(type?: string) {
   if (type === 'Normal') {
-    return 'bg-emerald-500'
+    return 'text-emerald-600'
   }
   if (type === 'Warning') {
-    return 'bg-yellow-500'
+    return 'text-yellow-600'
   }
-  return 'bg-destructive'
+  return 'text-destructive'
 }

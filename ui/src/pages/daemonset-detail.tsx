@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { IconReload } from '@tabler/icons-react'
 import { DaemonSet } from 'kubernetes-types/apps/v1'
+import type { Container } from 'kubernetes-types/core/v1'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -102,6 +103,42 @@ export function DaemonSetDetail(props: { namespace: string; name: string }) {
     }
   }
 
+  const handleContainerUpdate = useCallback(
+    async (updatedContainer: Container, init: boolean) => {
+      if (!daemonset) return
+      try {
+        const updated = JSON.parse(JSON.stringify(daemonset)) as DaemonSet
+        const templateSpec = updated.spec!.template.spec!
+
+        if (init) {
+          templateSpec.initContainers = (templateSpec.initContainers || []).map(
+            (container) =>
+              container.name === updatedContainer.name
+                ? updatedContainer
+                : container
+          )
+        } else {
+          templateSpec.containers = templateSpec.containers.map((container) =>
+            container.name === updatedContainer.name
+              ? updatedContainer
+              : container
+          )
+        }
+
+        await updateResource('daemonsets', name, namespace, updated)
+        toast.success(
+          t('common.messages.containerUpdated', {
+            defaultValue: 'Container updated successfully',
+          })
+        )
+        setRefreshInterval(1000)
+      } catch (err) {
+        toast.error(translateError(err, t))
+      }
+    },
+    [daemonset, name, namespace, t]
+  )
+
   const extraTabs = useMemo<ResourceDetailShellTab<DaemonSet>[]>(() => {
     const tabs: ResourceDetailShellTab<DaemonSet>[] = []
     const pods = relatedPods || []
@@ -114,7 +151,7 @@ export function DaemonSetDetail(props: { namespace: string; name: string }) {
         value: 'pods',
         label: (
           <>
-            {t('daemonsets.tabs.pods', { defaultValue: 'Pods' })}
+            {t('common.tabs.pods', { defaultValue: 'Pods' })}
             <Badge variant="secondary">{pods.length}</Badge>
           </>
         ),
@@ -130,7 +167,7 @@ export function DaemonSetDetail(props: { namespace: string; name: string }) {
         value: 'containers',
         label: (
           <>
-            {t('daemonsets.tabs.containers', { defaultValue: 'Containers' })}
+            {t('common.tabs.containers', { defaultValue: 'Containers' })}
             <Badge variant="secondary">
               {containers.length + initContainers.length}
             </Badge>
@@ -145,13 +182,22 @@ export function DaemonSetDetail(props: { namespace: string; name: string }) {
                     key={container.name}
                     container={container}
                     init
+                    onContainerUpdate={(updatedContainer) =>
+                      handleContainerUpdate(updatedContainer, true)
+                    }
                   />
                 ))}
               </div>
             ) : null}
             <div className="space-y-3">
               {containers.map((container) => (
-                <ContainerInfoCard key={container.name} container={container} />
+                <ContainerInfoCard
+                  key={container.name}
+                  container={container}
+                  onContainerUpdate={(updatedContainer) =>
+                    handleContainerUpdate(updatedContainer, false)
+                  }
+                />
               ))}
             </div>
           </div>
@@ -159,7 +205,7 @@ export function DaemonSetDetail(props: { namespace: string; name: string }) {
       },
       {
         value: 'logs',
-        label: t('daemonsets.tabs.logs', { defaultValue: 'Logs' }),
+        label: t('common.tabs.logs', { defaultValue: 'Logs' }),
         content: (
           <LogViewer
             namespace={namespace}
@@ -172,7 +218,7 @@ export function DaemonSetDetail(props: { namespace: string; name: string }) {
       },
       {
         value: 'terminal',
-        label: t('daemonsets.tabs.terminal', { defaultValue: 'Terminal' }),
+        label: t('common.tabs.terminal', { defaultValue: 'Terminal' }),
         content:
           pods.length > 0 ? (
             <Terminal
@@ -190,7 +236,7 @@ export function DaemonSetDetail(props: { namespace: string; name: string }) {
         value: 'volumes',
         label: (
           <>
-            {t('daemonsets.tabs.volumes', { defaultValue: 'Volumes' })}
+            {t('common.tabs.volumes', { defaultValue: 'Volumes' })}
             <Badge variant="secondary">{templateSpec.volumes.length}</Badge>
           </>
         ),
@@ -208,7 +254,7 @@ export function DaemonSetDetail(props: { namespace: string; name: string }) {
     tabs.push(
       {
         value: 'related',
-        label: t('daemonsets.tabs.related', { defaultValue: 'Related' }),
+        label: t('common.tabs.related', { defaultValue: 'Related' }),
         content: (
           <RelatedResourcesTable
             resource="daemonsets"
@@ -219,7 +265,7 @@ export function DaemonSetDetail(props: { namespace: string; name: string }) {
       },
       {
         value: 'history',
-        label: t('daemonsets.tabs.history', { defaultValue: 'History' }),
+        label: t('common.tabs.history', { defaultValue: 'History' }),
         content: daemonset ? (
           <ResourceHistoryTable
             resourceType="daemonsets"
@@ -231,14 +277,14 @@ export function DaemonSetDetail(props: { namespace: string; name: string }) {
       },
       {
         value: 'events',
-        label: t('daemonsets.tabs.events', { defaultValue: 'Events' }),
+        label: t('common.tabs.events', { defaultValue: 'Events' }),
         content: (
           <EventTable resource="daemonsets" name={name} namespace={namespace} />
         ),
       },
       {
         value: 'monitor',
-        label: t('daemonsets.tabs.monitor', { defaultValue: 'Monitor' }),
+        label: t('common.tabs.monitor', { defaultValue: 'Monitor' }),
         content: (
           <PodMonitoring
             namespace={namespace}
@@ -255,6 +301,7 @@ export function DaemonSetDetail(props: { namespace: string; name: string }) {
     return tabs
   }, [
     daemonset,
+    handleContainerUpdate,
     isLoading,
     isLoadingPods,
     labelSelector,

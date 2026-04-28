@@ -87,7 +87,7 @@ export function LoginPage() {
   }
 
   const credentialTabLabel = {
-    password: t('login.tabs.password', 'Password'),
+    password: t('common.fields.password', 'Password'),
     ldap: t('login.tabs.ldap', 'LDAP'),
   } satisfies Record<CredentialProvider, string>
 
@@ -190,7 +190,7 @@ export function LoginPage() {
             <p className="text-gray-600">{t('login.kubernetesDashboard')}</p>
           </div>
 
-          <Card className="shadow-sm border">
+          <Card>
             <CardHeader className="text-center">
               <CardTitle className="text-xl">{t('login.signIn')}</CardTitle>
               <CardDescription className="text-gray-600">
@@ -280,7 +280,7 @@ export function LoginPage() {
                       >
                         <div className="space-y-2">
                           <Label htmlFor="username">
-                            {t('login.username')}
+                            {t('common.fields.username')}
                           </Label>
                           <Input
                             id="username"
@@ -293,7 +293,7 @@ export function LoginPage() {
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="password">
-                            {t('login.password')}
+                            {t('common.fields.password')}
                           </Label>
                           <Input
                             id="password"

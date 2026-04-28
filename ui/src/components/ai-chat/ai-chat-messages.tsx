@@ -14,6 +14,7 @@ import remarkGfm from 'remark-gfm'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Select,
   SelectContent,
@@ -100,7 +101,7 @@ function ToolCallMessage({
       }
       const value = formValues[field.name]
       if (typeof value !== 'string' || value.trim() === '') {
-        nextErrors[field.name] = t('aiChat.validation.required', 'Required')
+        nextErrors[field.name] = t('common.values.required', 'Required')
       }
     }
 
@@ -289,7 +290,7 @@ function ToolCallMessage({
                   className="h-8"
                   onClick={() => onDeny?.(message.id)}
                 >
-                  {t('common.cancel', 'Cancel')}
+                  {t('common.actions.cancel', 'Cancel')}
                 </Button>
               </div>
             </div>
@@ -522,7 +523,7 @@ export function AIChatMessages({
   messagesEndRef: RefObject<HTMLDivElement | null>
 }) {
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+    <ScrollArea className="flex-1 min-h-0">
       {messages.length === 0 ? (
         <SuggestedPrompts pageContext={pageContext} onSelect={onPromptSelect} />
       ) : (
@@ -549,6 +550,6 @@ export function AIChatMessages({
           <div ref={messagesEndRef} />
         </>
       )}
-    </div>
+    </ScrollArea>
   )
 }

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { IconReload, IconScale } from '@tabler/icons-react'
 import { StatefulSet } from 'kubernetes-types/apps/v1'
+import type { Container } from 'kubernetes-types/core/v1'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -146,6 +147,42 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
     }
   }
 
+  const handleContainerUpdate = useCallback(
+    async (updatedContainer: Container, init: boolean) => {
+      if (!statefulset) return
+      try {
+        const updated = JSON.parse(JSON.stringify(statefulset)) as StatefulSet
+        const templateSpec = updated.spec!.template.spec!
+
+        if (init) {
+          templateSpec.initContainers = (templateSpec.initContainers || []).map(
+            (container) =>
+              container.name === updatedContainer.name
+                ? updatedContainer
+                : container
+          )
+        } else {
+          templateSpec.containers = templateSpec.containers.map((container) =>
+            container.name === updatedContainer.name
+              ? updatedContainer
+              : container
+          )
+        }
+
+        await updateResource('statefulsets', name, namespace, updated)
+        toast.success(
+          t('common.messages.containerUpdated', {
+            defaultValue: 'Container updated successfully',
+          })
+        )
+        setRefreshInterval(1000)
+      } catch (err) {
+        toast.error(translateError(err, t))
+      }
+    },
+    [name, namespace, statefulset, t]
+  )
+
   const extraTabs = useMemo<ResourceDetailShellTab<StatefulSet>[]>(() => {
     const pods = relatedPods || []
     const containers = statefulset?.spec?.template?.spec?.containers || []
@@ -159,7 +196,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
         value: 'pods',
         label: (
           <>
-            {t('statefulsets.tabs.pods', { defaultValue: 'Pods' })}
+            {t('common.tabs.pods', { defaultValue: 'Pods' })}
             <Badge variant="secondary">{pods.length}</Badge>
           </>
         ),
@@ -175,7 +212,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
         value: 'containers',
         label: (
           <>
-            {t('statefulsets.tabs.containers', {
+            {t('common.tabs.containers', {
               defaultValue: 'Containers',
             })}
             <Badge variant="secondary">
@@ -192,13 +229,22 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
                     key={container.name}
                     container={container}
                     init
+                    onContainerUpdate={(updatedContainer) =>
+                      handleContainerUpdate(updatedContainer, true)
+                    }
                   />
                 ))}
               </div>
             ) : null}
             <div className="space-y-3">
               {containers.map((container) => (
-                <ContainerInfoCard key={container.name} container={container} />
+                <ContainerInfoCard
+                  key={container.name}
+                  container={container}
+                  onContainerUpdate={(updatedContainer) =>
+                    handleContainerUpdate(updatedContainer, false)
+                  }
+                />
               ))}
             </div>
           </div>
@@ -206,7 +252,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
       },
       {
         value: 'logs',
-        label: t('statefulsets.tabs.logs', { defaultValue: 'Logs' }),
+        label: t('common.tabs.logs', { defaultValue: 'Logs' }),
         content: (
           <LogViewer
             namespace={namespace}
@@ -219,7 +265,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
       },
       {
         value: 'terminal',
-        label: t('statefulsets.tabs.terminal', { defaultValue: 'Terminal' }),
+        label: t('common.tabs.terminal', { defaultValue: 'Terminal' }),
         content:
           pods.length > 0 ? (
             <Terminal
@@ -234,7 +280,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
         value: 'volumes',
         label: (
           <>
-            {t('statefulsets.tabs.volumes', { defaultValue: 'Volumes' })}
+            {t('common.tabs.volumes', { defaultValue: 'Volumes' })}
             <Badge variant="secondary">{volumes.length}</Badge>
           </>
         ),
@@ -249,7 +295,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
       },
       {
         value: 'related',
-        label: t('statefulsets.tabs.related', { defaultValue: 'Related' }),
+        label: t('common.tabs.related', { defaultValue: 'Related' }),
         content: (
           <RelatedResourcesTable
             resource="statefulsets"
@@ -260,7 +306,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
       },
       {
         value: 'history',
-        label: t('statefulsets.tabs.history', { defaultValue: 'History' }),
+        label: t('common.tabs.history', { defaultValue: 'History' }),
         content: statefulset ? (
           <ResourceHistoryTable
             resourceType="statefulsets"
@@ -272,7 +318,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
       },
       {
         value: 'events',
-        label: t('statefulsets.tabs.events', { defaultValue: 'Events' }),
+        label: t('common.tabs.events', { defaultValue: 'Events' }),
         content: (
           <EventTable
             resource="statefulsets"
@@ -283,7 +329,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
       },
       {
         value: 'monitor',
-        label: t('statefulsets.tabs.monitor', { defaultValue: 'Monitor' }),
+        label: t('common.tabs.monitor', { defaultValue: 'Monitor' }),
         content: (
           <PodMonitoring
             namespace={namespace}
@@ -297,6 +343,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
       },
     ]
   }, [
+    handleContainerUpdate,
     isLoading,
     isLoadingPods,
     labelSelector,
