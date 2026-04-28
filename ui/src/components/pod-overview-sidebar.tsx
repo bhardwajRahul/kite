@@ -285,27 +285,22 @@ export function MetadataListCard({
       </CardHeader>
       <CardContent className="p-0">
         {rows.length > 0 ? (
-          <ScrollArea className="max-h-72 divide-y">
-            {rows.map(([key, value]) => (
-              <div
-                key={key}
-                className="flex min-w-0 items-center gap-2 px-4 py-2.5 text-xs"
-              >
-                <Badge
-                  variant="outline"
-                  className="min-w-0 shrink truncate font-mono"
-                  title={key}
+          <ScrollArea className="max-h-72">
+            <div className="divide-y divide-border/60">
+              {rows.map(([key, value]) => (
+                <div
+                  key={key}
+                  className="min-w-0 px-3 py-1.5 font-mono text-xs leading-5 text-muted-foreground"
+                  title={`${key}=${value}`}
                 >
-                  {key}
-                </Badge>
-                <span
-                  className="min-w-0 flex-1 truncate text-right font-mono text-muted-foreground"
-                  title={value}
-                >
-                  {value}
-                </span>
-              </div>
-            ))}
+                  <span className="break-all">
+                    <span className="text-foreground">{key}</span>
+                    <span>=</span>
+                    <span className="tabular-nums">{value}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
           </ScrollArea>
         ) : (
           <div className="px-4 py-6 text-sm text-muted-foreground">
