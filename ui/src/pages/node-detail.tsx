@@ -535,8 +535,8 @@ function NodeOverview({
   )
 
   return (
-    <div className="space-y-3">
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+    <div className="@container/node-overview space-y-3">
+      <div className="grid gap-3 md:grid-cols-2 @4xl/node-overview:grid-cols-6">
         <WorkloadSummaryCard
           label={t('common.fields.status')}
           value={
@@ -588,8 +588,8 @@ function NodeOverview({
         />
       </div>
 
-      <div className="grid gap-3 xl:grid-cols-3">
-        <div className="space-y-3 xl:col-span-2">
+      <div className="grid gap-3 @4xl/node-overview:grid-cols-3">
+        <div className="space-y-3 @4xl/node-overview:col-span-2">
           <Card className="gap-0 overflow-hidden rounded-lg border-border/70 py-0 shadow-none">
             <CardHeader className="px-3 py-2.5 !pb-2.5">
               <CardTitle className="text-balance text-sm">

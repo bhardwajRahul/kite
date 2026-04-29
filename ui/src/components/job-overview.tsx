@@ -60,11 +60,11 @@ export function JobOverview({
     useRelatedResources('jobs', name, namespace)
 
   return (
-    <div className="space-y-3">
+    <div className="@container/job-overview space-y-3">
       <JobSummaryGrid job={job} />
 
-      <div className="grid gap-3 xl:grid-cols-3">
-        <div className="space-y-3 xl:col-span-2">
+      <div className="grid gap-3 @4xl/job-overview:grid-cols-3">
+        <div className="space-y-3 @4xl/job-overview:col-span-2">
           <WorkloadPodsCard
             title={t('common.fields.pods', { defaultValue: 'Pods' })}
             pods={pods || []}
@@ -111,7 +111,7 @@ function JobSummaryGrid({ job }: { job: Job }) {
   const completions = job.spec?.completions ?? 1
 
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+    <div className="grid gap-3 md:grid-cols-2 @4xl/job-overview:grid-cols-6">
       <WorkloadSummaryCard
         label={t('common.fields.status')}
         value={

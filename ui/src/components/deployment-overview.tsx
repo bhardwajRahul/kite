@@ -62,11 +62,11 @@ export function DeploymentOverview({
     useRelatedResources('deployments', name, namespace)
 
   return (
-    <div className="space-y-3">
+    <div className="@container/deployment-overview space-y-3">
       <DeploymentSummaryGrid deployment={deployment} />
 
-      <div className="grid gap-3 xl:grid-cols-3">
-        <div className="space-y-3 xl:col-span-2">
+      <div className="grid gap-3 @4xl/deployment-overview:grid-cols-3">
+        <div className="space-y-3 @4xl/deployment-overview:col-span-2">
           <WorkloadPodsCard
             title={t('common.fields.pods')}
             pods={pods || []}
@@ -109,7 +109,7 @@ function DeploymentSummaryGrid({ deployment }: { deployment: Deployment }) {
   const deploymentStatus = getDeploymentStatus(deployment)
 
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+    <div className="grid gap-3 md:grid-cols-2 @4xl/deployment-overview:grid-cols-6">
       <WorkloadSummaryCard
         label={t('common.fields.status')}
         value={

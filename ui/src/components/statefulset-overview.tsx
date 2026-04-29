@@ -63,11 +63,11 @@ export function StatefulSetOverview({
     useRelatedResources('statefulsets', name, namespace)
 
   return (
-    <div className="space-y-3">
+    <div className="@container/statefulset-overview space-y-3">
       <StatefulSetSummaryGrid statefulset={statefulset} />
 
-      <div className="grid gap-3 xl:grid-cols-3">
-        <div className="space-y-3 xl:col-span-2">
+      <div className="grid gap-3 @4xl/statefulset-overview:grid-cols-3">
+        <div className="space-y-3 @4xl/statefulset-overview:col-span-2">
           <WorkloadPodsCard
             title={t('common.fields.pods', { defaultValue: 'Pods' })}
             pods={pods || []}
@@ -114,7 +114,7 @@ function StatefulSetSummaryGrid({ statefulset }: { statefulset: StatefulSet }) {
   const statefulSetStatus = getStatefulSetStatus(statefulset)
 
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+    <div className="grid gap-3 md:grid-cols-2 @4xl/statefulset-overview:grid-cols-6">
       <WorkloadSummaryCard
         label={t('common.fields.status')}
         value={

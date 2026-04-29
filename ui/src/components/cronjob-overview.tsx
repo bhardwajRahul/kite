@@ -84,11 +84,11 @@ export function CronJobOverview({
     useRelatedResources('cronjobs', name, namespace)
 
   return (
-    <div className="space-y-3">
+    <div className="@container/cronjob-overview space-y-3">
       <CronJobSummaryGrid cronjob={cronjob} />
 
-      <div className="grid gap-3 xl:grid-cols-3">
-        <div className="space-y-3 xl:col-span-2">
+      <div className="grid gap-3 @4xl/cronjob-overview:grid-cols-3">
+        <div className="space-y-3 @4xl/cronjob-overview:col-span-2">
           <CronJobJobsCard jobs={jobs || []} isLoading={isJobsLoading} />
           <CronJobInformationCard cronjob={cronjob} />
         </div>
@@ -124,7 +124,7 @@ function CronJobSummaryGrid({ cronjob }: { cronjob: CronJob }) {
   const lastSuccessfulTime = cronjob.status?.lastSuccessfulTime
 
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+    <div className="grid gap-3 md:grid-cols-2 @4xl/cronjob-overview:grid-cols-6">
       <WorkloadSummaryCard
         label={t('common.fields.status')}
         value={

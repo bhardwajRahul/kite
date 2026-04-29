@@ -97,7 +97,7 @@ export function PodOverview({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="@container/pod-overview space-y-3">
       <PodSummaryGrid pod={pod} podStatus={podStatus} />
 
       {podErrorMessage ? (
@@ -106,8 +106,8 @@ export function PodOverview({
         </div>
       ) : null}
 
-      <div className="grid gap-3 xl:grid-cols-3">
-        <div className="space-y-3 xl:col-span-2">
+      <div className="grid gap-3 @4xl/pod-overview:grid-cols-3">
+        <div className="space-y-3 @4xl/pod-overview:col-span-2">
           <PodContainersCard
             containers={containers}
             namespace={namespace}
@@ -148,7 +148,7 @@ function PodSummaryGrid({
   const { t } = useTranslation()
 
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+    <div className="grid gap-3 md:grid-cols-2 @4xl/pod-overview:grid-cols-6">
       <PodSummaryCard
         label={t('common.fields.status')}
         value={
