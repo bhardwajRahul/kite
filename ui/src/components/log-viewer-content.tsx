@@ -66,6 +66,8 @@ export interface LogViewerProps {
 }
 
 const ANSI_CSS = generateAnsiCss()
+// Monaco's NeverGrowsWhenTypingAtEdges value, kept numeric to avoid importing Monaco at runtime.
+const NEVER_GROWS_WHEN_TYPING_AT_EDGES: editor.TrackedRangeStickiness = 1
 const TERMINAL_THEME_KEYS = Object.keys(TERMINAL_THEMES) as TerminalTheme[]
 const TERMINAL_THEME_ENTRIES = Object.entries(TERMINAL_THEMES) as Array<
   [TerminalTheme, (typeof TERMINAL_THEMES)[TerminalTheme]]
@@ -258,7 +260,7 @@ export function LogViewer({
           endLineNumber: lineCount,
         },
         text: textToInsert,
-        forceMoveMarkers: true,
+        forceMoveMarkers: false,
       },
     ])
 
@@ -292,6 +294,7 @@ export function LogViewer({
           },
           options: {
             inlineClassName: className,
+            stickiness: NEVER_GROWS_WHEN_TYPING_AT_EDGES,
           },
         })
       }
