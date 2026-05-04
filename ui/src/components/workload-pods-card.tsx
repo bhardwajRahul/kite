@@ -16,7 +16,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Table,
   TableBody,
@@ -52,67 +51,63 @@ export function WorkloadPodsCard({
           {title} ({pods.length})
         </CardTitle>
       </CardHeader>
-      <CardContent className="max-h-96 px-0">
-        <ScrollArea className="max-h-96">
-          <Table className="w-full min-w-[820px] table-fixed">
-            <colgroup>
-              <col />
-              <col className="w-44" />
-              <col className="w-20" />
-              <col className="w-20" />
-              <col className="w-32" />
-              <col className="w-20" />
-            </colgroup>
-            <TableHeader className="sticky top-0 z-10 bg-background">
+      <CardContent className="max-h-96 overflow-y-auto px-0">
+        <Table className="w-full min-w-[820px] table-fixed">
+          <colgroup>
+            <col />
+            <col className="w-44" />
+            <col className="w-20" />
+            <col className="w-20" />
+            <col className="w-32" />
+            <col className="w-20" />
+          </colgroup>
+          <TableHeader className="sticky top-0 z-10 bg-background">
+            <TableRow>
+              <TableHead className="h-8 px-4">{t('nav.pods')}</TableHead>
+              <TableHead className="h-8 px-1 text-center">
+                {t('common.fields.status')}
+              </TableHead>
+              <TableHead className="h-8 px-1 text-center">
+                {t('common.fields.ready')}
+              </TableHead>
+              <TableHead className="h-8 px-1 text-center">
+                {t('common.fields.restart')}
+              </TableHead>
+              <TableHead className="h-8 px-1 text-center">
+                {t('common.fields.node')}
+              </TableHead>
+              <TableHead className="h-8 px-1 text-center">{ageLabel}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
               <TableRow>
-                <TableHead className="h-8 px-4">{t('nav.pods')}</TableHead>
-                <TableHead className="h-8 px-1 text-center">
-                  {t('common.fields.status')}
-                </TableHead>
-                <TableHead className="h-8 px-1 text-center">
-                  {t('common.fields.ready')}
-                </TableHead>
-                <TableHead className="h-8 px-1 text-center">
-                  {t('common.fields.restart')}
-                </TableHead>
-                <TableHead className="h-8 px-1 text-center">
-                  {t('common.fields.node')}
-                </TableHead>
-                <TableHead className="h-8 px-1 text-center">
-                  {ageLabel}
-                </TableHead>
+                <TableCell
+                  colSpan={6}
+                  className="px-4 py-3 text-center text-muted-foreground"
+                >
+                  {loadingText}
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="px-4 py-3 text-center text-muted-foreground"
-                  >
-                    {loadingText}
-                  </TableCell>
-                </TableRow>
-              ) : pods.length > 0 ? (
-                pods.map((pod) => (
-                  <WorkloadPodRow
-                    key={pod.metadata?.uid || pod.metadata?.name}
-                    pod={pod}
-                  />
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="px-4 py-3 text-center text-muted-foreground"
-                  >
-                    {emptyText}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </ScrollArea>
+            ) : pods.length > 0 ? (
+              pods.map((pod) => (
+                <WorkloadPodRow
+                  key={pod.metadata?.uid || pod.metadata?.name}
+                  pod={pod}
+                />
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={6}
+                  className="px-4 py-3 text-center text-muted-foreground"
+                >
+                  {emptyText}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   )

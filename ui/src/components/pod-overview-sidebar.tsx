@@ -30,7 +30,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { ScrollArea } from '@/components/ui/scroll-area'
 
 type TranslationFn = ReturnType<typeof useTranslation>['t']
 
@@ -98,14 +97,14 @@ export function CompactRelatedResourcesCard({
             {t('pods.loadingRelatedResources')}
           </div>
         ) : resources.length > 0 ? (
-          <ScrollArea className="max-h-64 divide-y divide-border/70">
+          <div className="max-h-64 divide-y divide-border/70 overflow-y-auto">
             {resources.map((resource, index) => (
               <CompactRelatedResourceRow
                 key={`${resource.type}-${resource.namespace || ''}-${resource.name}-${index}`}
                 resource={resource}
               />
             ))}
-          </ScrollArea>
+          </div>
         ) : (
           <div className="px-3 py-4 text-sm text-muted-foreground">
             {t('pods.noRelatedResources')}
@@ -285,7 +284,7 @@ export function MetadataListCard({
       </CardHeader>
       <CardContent className="p-0">
         {rows.length > 0 ? (
-          <ScrollArea className="max-h-72">
+          <div className="max-h-72 overflow-y-auto">
             <div className="divide-y divide-border/60">
               {rows.map(([key, value]) => (
                 <div
@@ -301,7 +300,7 @@ export function MetadataListCard({
                 </div>
               ))}
             </div>
-          </ScrollArea>
+          </div>
         ) : (
           <div className="px-4 py-6 text-sm text-muted-foreground">
             {t('common.values.none')}
@@ -346,7 +345,7 @@ export function CompactEventsCard({
             {t('events.loading')}
           </div>
         ) : sortedEvents.length > 0 ? (
-          <ScrollArea className="max-h-56 font-mono text-xs">
+          <div className="max-h-56 overflow-y-auto font-mono text-xs">
             <div className="sticky top-0 grid grid-cols-[3.75rem_4.25rem_2.25rem_5rem_minmax(0,1fr)] gap-x-0.5 border-b border-border/70 bg-card px-2 py-1.5 font-medium text-muted-foreground">
               <span>{t('common.fields.type')}</span>
               <span>{t('common.fields.reason')}</span>
@@ -381,7 +380,7 @@ export function CompactEventsCard({
                 </span>
               </div>
             ))}
-          </ScrollArea>
+          </div>
         ) : (
           <div className="px-3 py-4 text-sm text-muted-foreground">
             {t('events.noRecentEvents')}

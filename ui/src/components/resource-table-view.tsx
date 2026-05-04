@@ -7,7 +7,6 @@ import {
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Select,
   SelectContent,
@@ -155,9 +154,9 @@ export function ResourceTableView<T>({
           }`}
         >
           {emptyState || (
-            <ScrollArea
+            <div
               className={cn(
-                'relative',
+                'relative overflow-auto scrollbar-hide',
                 fitViewportHeight ? 'min-h-[240px]' : maxBodyHeightClassName
               )}
               style={
@@ -212,7 +211,7 @@ export function ResourceTableView<T>({
                   {renderRows()}
                 </TableBody>
               </Table>
-            </ScrollArea>
+            </div>
           )}
         </div>
       </div>

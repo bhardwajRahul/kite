@@ -273,7 +273,7 @@ export function ResourceDetailShell<T>({
           'sticky z-40 bg-background px-4',
           isIframe
             ? 'top-0 -mx-4 lg:-mx-6 lg:px-6'
-            : 'top-0 -mx-4 lg:-mx-6 lg:px-6'
+            : 'top-(--header-height) -mx-4 lg:-mx-6 lg:px-6'
         )}
         tabs={tabs.map((tab) => ({
           value: tab.value,

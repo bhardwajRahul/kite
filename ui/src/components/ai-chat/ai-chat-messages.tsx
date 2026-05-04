@@ -14,7 +14,6 @@ import remarkGfm from 'remark-gfm'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Select,
   SelectContent,
@@ -523,7 +522,7 @@ export function AIChatMessages({
   messagesEndRef: RefObject<HTMLDivElement | null>
 }) {
   return (
-    <ScrollArea className="flex-1 min-h-0">
+    <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
       {messages.length === 0 ? (
         <SuggestedPrompts pageContext={pageContext} onSelect={onPromptSelect} />
       ) : (
@@ -550,6 +549,6 @@ export function AIChatMessages({
           <div ref={messagesEndRef} />
         </>
       )}
-    </ScrollArea>
+    </div>
   )
 }
