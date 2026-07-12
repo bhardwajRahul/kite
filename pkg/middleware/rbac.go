@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -17,17 +18,24 @@ func RBACMiddleware() gin.HandlerFunc {
 		cs := c.MustGet("cluster").(*cluster.ClientSet)
 
 		verbs := method2verb(c.Request.Method)
-		ns, resource := url2namespaceresource(c.Request.URL.Path)
+		ns, resource := url2namespaceresource(c.Request.URL.EscapedPath())
 		if ns == "" || resource == "" {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid resource URL"})
 			return
 		}
 		if resource == string(common.Namespaces) && verbs == "get" {
-			// if user has roles, allow access to list namespaces resource
-			// don't worry about security here, we will filter namespaces in the list namespace handler
-			// this is just to allow users to list namespaces they have access to
-			c.Next()
-			return
+			name := c.Param("name")
+			if name == "" && rbac.CanAccessCluster(user, cs.Name) {
+				// if user has cluster access, allow access to list namespaces resource
+				// don't worry about security here, we will filter namespaces in the list namespace handler
+				// this is just to allow users to list namespaces they have access to
+				c.Next()
+				return
+			}
+			if name != "" && rbac.CanAccessNamespace(user, cs.Name, name) {
+				c.Next()
+				return
+			}
 		}
 
 		canAccess := rbac.CanAccess(user, resource, verbs, cs.Name, ns)
@@ -58,18 +66,28 @@ func method2verb(method string) string {
 // - /api/v1/pvs/_all/some-pv => _all, some-pv
 // - /api/v1/pods/default => default, pods
 // - /api/v1/pods => "", pods
-func url2namespaceresource(url string) (namespace string, resource string) {
+func url2namespaceresource(path string) (namespace string, resource string) {
 	if common.Base != "" {
-		url = strings.TrimPrefix(url, common.Base)
+		path = strings.TrimPrefix(path, common.Base)
 	}
 	// Split the URL into its components
-	parts := strings.Split(url, "/")
-	if len(parts) < 4 {
+	parts := strings.Split(path, "/")
+	resourceIndex := 3
+	if len(parts) > resourceIndex && parts[resourceIndex] == "_clusters" {
+		resourceIndex += 2
+	}
+	if len(parts) <= resourceIndex {
 		return
 	}
-	resource = parts[3] // The resource type is always the third part
-	if len(parts) > 4 {
-		namespace = parts[4]
+	resource, err := url.PathUnescape(parts[resourceIndex])
+	if err != nil {
+		return "", ""
+	}
+	if len(parts) > resourceIndex+1 {
+		namespace, err = url.PathUnescape(parts[resourceIndex+1])
+		if err != nil {
+			return "", ""
+		}
 	} else {
 		namespace = common.AllNamespaces // All namespaces
 	}

@@ -49,6 +49,7 @@ func initializeApp(ctx context.Context) (*cluster.ClusterManager, error) {
 
 func buildEngine(cm *cluster.ClusterManager) *gin.Engine {
 	r := gin.New()
+	middleware.ConfigureRawPathRouting(r)
 	configureTrustedProxies(r)
 	r.Use(middleware.Metrics())
 	if !common.DisableGZIP {
