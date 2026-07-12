@@ -96,7 +96,7 @@ export function CRListPage() {
                 if (type === 'date') {
                   return (
                     <span className="text-sm text-muted-foreground">
-                      {formatDate(value)}
+                      {formatDate(String(value))}
                     </span>
                   )
                 }

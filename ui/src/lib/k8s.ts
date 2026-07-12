@@ -296,25 +296,68 @@ export function getPodErrorMessage(pod: Pod): string | undefined {
 export function getPrinterColumnValue(
   resource: CustomResource,
   jsonPath: string
-) {
-  const queryPath = jsonPath.startsWith('$')
-    ? jsonPath
-    : jsonPath.startsWith('.')
-      ? `$${jsonPath}`
-      : `$.${jsonPath}`
-  const values = jsonpath
-    .query(resource, queryPath)
-    .filter((value) => value !== undefined && value !== null)
+): string | number | boolean | undefined {
+  let normalizedPath = ''
+  let quote = ''
+  let escaped = false
+
+  for (let i = 0; i < jsonPath.length; i++) {
+    const char = jsonPath[i]
+
+    if (quote) {
+      normalizedPath += char
+      if (escaped) {
+        escaped = false
+      } else if (char === '\\') {
+        escaped = true
+      } else if (char === quote) {
+        quote = ''
+      }
+    } else if (char === "'" || char === '"') {
+      quote = char
+      normalizedPath += char
+    } else if (char === '[' && jsonPath[i + 1] === ']') {
+      normalizedPath += '[0]'
+      i++
+    } else {
+      normalizedPath += char
+    }
+  }
+
+  const queryPath = normalizedPath.startsWith('$')
+    ? normalizedPath
+    : normalizedPath.startsWith('.')
+      ? `$${normalizedPath}`
+      : `$.${normalizedPath}`
+
+  let values: unknown[]
+  try {
+    values = jsonpath
+      .query(resource, queryPath)
+      .filter((value) => value !== undefined && value !== null)
+  } catch {
+    return undefined
+  }
 
   if (values.length === 0) {
     return undefined
   }
 
-  if (values.length === 1) {
-    return values[0]
-  }
+  const printableValues = values.map((value) => {
+    if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
+      return value
+    }
 
-  return values.join(', ')
+    return JSON.stringify(value)
+  })
+
+  return printableValues.length === 1
+    ? printableValues[0]
+    : printableValues.join(', ')
 }
 
 export function getDeploymentStatus(

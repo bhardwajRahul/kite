@@ -6,7 +6,7 @@ PORT="${KITE_E2E_PORT:-38080}"
 if [ -n "${KITE_E2E_DB_PATH:-}" ]; then
   DB_PATH="${KITE_E2E_DB_PATH}"
 else
-  DB_PATH="$(mktemp "${TMPDIR:-/tmp}/kite-e2e.XXXXXX.db")"
+  DB_PATH="$(mktemp "${TMPDIR:-/tmp}/kite-e2e.XXXXXX")"
 fi
 
 cd "${ROOT_DIR}"
