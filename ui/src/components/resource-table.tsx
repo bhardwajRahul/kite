@@ -79,6 +79,7 @@ function ResourceTableContent<T>({
     setDeleteDialogOpen,
     searchQuery,
     setSearchQuery,
+    debouncedSearchQuery,
     columnVisibility,
     setColumnVisibility,
     pagination,
@@ -96,6 +97,14 @@ function ResourceTableContent<T>({
     clusterScope,
     defaultHiddenColumns,
   })
+
+  // When the query looks like a label selector, route it to the backend API
+  // instead of the client-side name filter.
+  const isLabelSelector = searchQuery.includes('=') || searchQuery.includes(':')
+  const effectiveLabelSelector =
+    debouncedSearchQuery.includes('=') || debouncedSearchQuery.includes(':')
+      ? debouncedSearchQuery.replace(/:\s*/g, '=')
+      : undefined
   const selectedNamespaces = useMemo(() => {
     if (!selectedNamespace || selectedNamespace === '_all') return []
     return selectedNamespace.split(',').filter(Boolean)
@@ -124,6 +133,7 @@ function ResourceTableContent<T>({
     namespace: effectiveNamespace,
     useSSE,
     refreshInterval,
+    labelSelector: effectiveLabelSelector,
   })
   const displayResourceName = (() => {
     const resource = getResourceMetadata(resolvedResourceType)
@@ -229,10 +239,10 @@ function ResourceTableContent<T>({
   )
 
   useEffect(() => {
-    if (!useSSE && error) {
+    if (!useSSE && error && !effectiveLabelSelector) {
       setRefreshInterval(0)
     }
-  }, [useSSE, error, setRefreshInterval])
+  }, [useSSE, error, effectiveLabelSelector, setRefreshInterval])
 
   // Create table instance using TanStack Table
   const table = useReactTable<T>({
@@ -267,7 +277,7 @@ function ResourceTableContent<T>({
     state: {
       sorting,
       columnFilters,
-      globalFilter: searchQuery,
+      globalFilter: isLabelSelector ? '' : searchQuery,
       pagination,
       rowSelection,
       columnVisibility,
@@ -417,7 +427,9 @@ function ResourceTableContent<T>({
           </h3>
           <p className="text-muted-foreground">
             {searchQuery
-              ? `No results match your search query: "${searchQuery}"`
+              ? isLabelSelector
+                ? `No ${displayResourceName} match labels: "${searchQuery}"`
+                : `No results match your search query: "${searchQuery}"`
               : clusterScope
                 ? `There are no ${displayResourceName} found`
                 : `There are no ${displayResourceName} in ${namespaceDescription}`}
