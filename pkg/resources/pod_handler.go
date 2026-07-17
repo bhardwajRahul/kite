@@ -530,6 +530,12 @@ func (h *PodHandler) Watch(c *gin.Context) {
 	labelSelector := c.Query("labelSelector")
 	fieldSelector := c.Query("fieldSelector")
 
+	// Reauthorize every streamed item against the latest role configuration so
+	// role revocations take effect without waiting for the connection to close.
+	// For cross-namespace watches this also drops events from unauthorized
+	// namespaces after the middleware's resource-level entry check.
+	user := c.MustGet("user").(model.User)
+
 	listOpts := metav1.ListOptions{}
 	if labelSelector != "" {
 		listOpts.LabelSelector = labelSelector
@@ -547,7 +553,7 @@ func (h *PodHandler) Watch(c *gin.Context) {
 		klog.Warningf("Failed to list pod metrics: %v", err)
 	}
 
-	watchInterface, err := cs.K8sClient.ClientSet.CoreV1().Pods(ns).Watch(c, listOpts)
+	watchInterface, err := cs.K8sClient.ClientSet.CoreV1().Pods(ns).Watch(c.Request.Context(), listOpts)
 	if err != nil {
 		_ = writeSSE(c, "error", gin.H{"error": fmt.Sprintf("failed to start watch: %v", err)})
 		return
@@ -568,6 +574,9 @@ func (h *PodHandler) Watch(c *gin.Context) {
 		case <-ticker.C:
 			metricsMap, _ = h.ListMetrics(c)
 			for _, metrics := range metricsMap {
+				if !rbac.CanAccessCurrent(user, string(common.Pods), string(common.VerbGet), cs.Name, metrics.Namespace) {
+					continue
+				}
 				pod, err := h.GetResource(c, metrics.Namespace, metrics.Name)
 				if err != nil {
 					klog.Warningf("Failed to get pod: %v", err)
@@ -587,6 +596,9 @@ func (h *PodHandler) Watch(c *gin.Context) {
 
 			pod, ok := event.Object.(*corev1.Pod)
 			if !ok || pod == nil {
+				continue
+			}
+			if !rbac.CanAccessCurrent(user, string(common.Pods), string(common.VerbGet), cs.Name, pod.Namespace) {
 				continue
 			}
 
