@@ -433,7 +433,7 @@ func (h *CRHandler) Update(c *gin.Context) {
 	}
 
 	success = true
-	c.JSON(http.StatusOK, updatedCR)
+	c.JSON(http.StatusOK, &updatedCR)
 }
 
 func (h *CRHandler) ListHistory(c *gin.Context) {
