@@ -415,22 +415,12 @@ export function LogViewer({
 
     // Show reconnecting state when parameters change
     setIsReconnecting(true)
-
-    // Reset reconnecting state when loading stops
-    const timer = setTimeout(() => {
-      if (!isLoading) {
-        setIsReconnecting(false)
-      }
-    }, 500)
-
-    return () => clearTimeout(timer)
   }, [
     selectedContainer,
     selectPodName,
     tailLines,
     timestamps,
     previous,
-    isLoading,
     cleanLog,
   ])
 
