@@ -62,6 +62,10 @@ func HandleProxy(c *gin.Context, client *K8sClient, kind, namespace, name, proxy
 }
 
 func buildProxyURL(host, kind, namespace, name, proxyPath, rawQuery string) (string, error) {
+	if strings.Contains(name, "..") {
+		return "", errors.New("invalid proxy path: path traversal detected")
+	}
+
 	base, err := url.JoinPath(host, "api/v1/namespaces", namespace, kind, name, "proxy")
 	if err != nil {
 		return "", err
@@ -79,6 +83,13 @@ func buildProxyURL(host, kind, namespace, name, proxyPath, rawQuery string) (str
 	}
 	u.Path = strings.TrimSuffix(u.Path, "/") + "/" + strings.TrimPrefix(proxyPath, "/")
 	u.RawPath = ""
+
+	// Defensive: ensure the cleaned path still contains the expected
+	// namespace/kind/name/proxy prefix and has not escaped it.
+	prefix := "/api/v1/namespaces/" + namespace + "/" + kind + "/" + name + "/proxy"
+	if !strings.Contains(u.Path, prefix) {
+		return "", errors.New("invalid proxy path: path traversal detected")
+	}
 
 	query, err := url.ParseQuery(rawQuery)
 	if err != nil {

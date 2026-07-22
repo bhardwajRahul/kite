@@ -128,7 +128,7 @@ test('proxy path escape via encoded .. cannot bypass RBAC to read secrets', asyn
     const createdRole = await request.post('/api/v1/admin/roles/', {
       data: {
         name: roleName,
-        description: 'pods:get in default only — must NOT reach secrets',
+        description: 'pods:get in default only — must NOT reach secrets/services',
         clusters: [clusterName],
         namespaces: ['default'],
         resources: ['pods'],
@@ -287,6 +287,47 @@ test('proxy path escape via encoded .. cannot bypass RBAC to read secrets', asyn
     expect(clusterScopedResponse.body).not.toContain(secretProofValue)
     expect(clusterScopedResponse.body).not.toContain(secretName)
 
+    // --- Exploit: encoded .. inside the resource name to reach another proxy -
+    // Gin matches /namespaces/:namespace/:kind/:name/proxy/*path. An attacker
+    // can put encoded .. segments into :name so that url.JoinPath cleans the
+    // proxy base to a different namespace/kind/name. The /proxy/ segment is
+    // still present, so this targets another pods/services proxy only.
+    const targetProxyPath = `${clusterPath}/namespaces/kube-system/services/http:kube-dns:metrics/proxy/metrics`
+
+    const targetResponse = await request.get(targetProxyPath)
+    const targetBody = await targetResponse.text()
+    expect(targetResponse.status(), targetBody).toBe(200)
+    expect(targetBody).toContain('# HELP')
+
+    await expectStatus(await readerRequest.get(targetProxyPath), 403)
+
+    const escapedName = [
+      '%2e%2e',
+      '%2e%2e',
+      '%2e%2e',
+      'namespaces',
+      'kube-system',
+      'services',
+      'http%3akube-dns%3ametrics',
+    ].join('%2f')
+    const nameExploitPath = `${clusterPath}/namespaces/default/pods/${escapedName}/proxy/metrics`
+    const nameExploitResponse = await sendRawHTTP(
+      baseURL,
+      'GET',
+      nameExploitPath,
+      cookieHeader
+    )
+
+    expect(
+      nameExploitResponse.status,
+      `Proxy resource-name escape was not blocked.\n` +
+        `  Exploit URL path: ${nameExploitPath}\n` +
+        `  Expected status: >= 400 (RBAC denial or bad request)\n` +
+        `  Actual status:   ${nameExploitResponse.status}\n` +
+        `  Response body preview: ${nameExploitResponse.body.slice(0, 500)}`
+    ).toBeGreaterThanOrEqual(400)
+    expect(nameExploitResponse.body).not.toContain('# HELP')
+
     // --- Sanity: a legitimate (non-escaping) proxy path is still usable ------
     // The pod runs pause, so Kubernetes may return an upstream 400/404/503.
     // Verify the request was not rejected by Kite's proxy-path validation or
@@ -329,3 +370,5 @@ test('proxy path escape via encoded .. cannot bypass RBAC to read secrets', asyn
     await readerRequest?.dispose()
   }
 })
+
+

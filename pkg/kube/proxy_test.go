@@ -90,6 +90,26 @@ func TestBuildProxyURL(t *testing.T) {
 			rawQuery:  "",
 			want:      "https://example.com/k8s/clusters/local/api/v1/namespaces/default/pods/nginx/proxy/logs",
 		},
+		{
+			name:      "rejects traversal encoded in resource name",
+			host:      "https://example.com",
+			kind:      "pods",
+			namespace: "default",
+			resource:  "%2e%2e%2f%2e%2e%2f%2e%2e%2fnamespaces%2fkube-system%2fservices%2fhttp:kube-dns:metrics",
+			path:      "/metrics",
+			rawQuery:  "",
+			wantErr:   true,
+		},
+		{
+			name:      "rejects traversal in resource name",
+			host:      "https://example.com",
+			kind:      "pods",
+			namespace: "default",
+			resource:  "../../../namespaces/kube-system/services/http:kube-dns:metrics",
+			path:      "/metrics",
+			rawQuery:  "",
+			wantErr:   true,
+		},
 	}
 
 	for _, tt := range tests {
