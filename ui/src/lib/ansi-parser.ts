@@ -121,15 +121,22 @@ export function parseAnsi(
 
   const cells: ParsedSegment[] = []
   let cursor = 0
+  let lineStart = 0
 
   for (const segment of segments) {
     for (const character of segment.text) {
       if (character === '\b') {
-        cursor = Math.max(0, cursor - 1)
+        cursor = Math.max(lineStart, cursor - 1)
         continue
       }
       if (character === '\r') {
-        cursor = 0
+        cursor = lineStart
+        continue
+      }
+      if (character === '\n') {
+        cells.push({ text: character, styles: segment.styles })
+        cursor = cells.length
+        lineStart = cursor
         continue
       }
 
