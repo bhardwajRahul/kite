@@ -747,6 +747,23 @@ export interface ResourceHistoryResponse {
   }
 }
 
+export type WorkloadRevisionResourceType =
+  'deployments' | 'statefulsets' | 'daemonsets'
+
+export interface WorkloadRevisionItem {
+  revision: number
+  revisionObject: string
+  changeCause?: string
+  images: string[]
+  replicas?: number
+  createdAt: string
+  current: boolean
+}
+
+export interface WorkloadRevisionsResponse {
+  items: WorkloadRevisionItem[]
+}
+
 export interface AuditLogResponse {
   data: ResourceHistory[]
   total: number
