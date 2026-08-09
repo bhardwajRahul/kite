@@ -24,13 +24,13 @@ The connection chain looks like this:
 Kite Kubernetes Client
         │
         ▼
-Kite Server local loopback port
+Kite Server authenticated HTTPS loopback proxy
         │
         ▼
 WebSocket tunnel (established by the Connector)
         │
         ▼
-Connector local Kubernetes API reverse proxy
+Connector in-process Kubernetes API reverse proxy
         │
         ▼
 Target cluster kube-apiserver
@@ -40,8 +40,8 @@ The detailed process:
 
 1. When you create a Connector cluster in the Kite UI, Kite generates a random connection token, stores only its SHA-256 hash, and shows the raw token once after creation.
 2. The Connector connects to Kite Server's `/api/v1/connector/connect` WebSocket endpoint using the token. Kite validates the token and binds the connection to the corresponding cluster.
-3. Kite Server creates a random port listening only on `127.0.0.1` for that cluster. The existing Kubernetes Client connects to this port, and requests are tunneled to the Connector.
-4. The Connector also creates a Kubernetes API reverse proxy listening only on `127.0.0.1` and uses its local ServiceAccount or kubeconfig to reach kube-apiserver.
+3. Kite Server creates an authenticated HTTPS proxy on a random `127.0.0.1` port for that cluster. Its credentials and pinned certificate remain in process memory, and requests are tunneled to the Connector after authentication.
+4. The Connector serves its Kubernetes API reverse proxy over in-process connections and uses its local ServiceAccount or kubeconfig to reach kube-apiserver.
 5. The Connector strips any `Authorization` and `Impersonate-*` headers coming from Kite, then its local Kubernetes Transport injects the Connector's own cluster credentials.
 
 A single Connector WebSocket can carry multiple Kubernetes API connections. Streaming requests such as logs, watches, and terminals also travel over the same tunnel.
@@ -145,7 +145,7 @@ The Connector then uses the API server and credentials from the kubeconfig's cur
 ### Network and Availability
 
 - The Connector only needs outbound access to Kite Server and the target cluster's kube-apiserver; it does not expose any new listening port to the outside.
-- Both Kite Server and the Connector process create random ports bound only to `127.0.0.1`, which is normal behavior of the internal forwarding chain.
+- Kite Server's internal proxy uses an authenticated HTTPS endpoint bound only to `127.0.0.1`. The Connector side uses in-process connections and does not open a local operating-system port for the proxy.
 - The Ingress or reverse proxy in front of Kite must support WebSocket Upgrade and long-lived connections.
 - Connector session routing across multiple Kite Server replicas is not yet implemented. When using Connector clusters, run a single Kite Server replica first.
 - A tunnel disconnect aborts any running logs, watch, or terminal connections. After the Connector reconnects, clients must re-initiate these streaming requests.

@@ -18,6 +18,28 @@ import (
 	"k8s.io/klog/v2"
 )
 
+type singleConnListener struct {
+	conn net.Conn
+	addr net.Addr
+}
+
+func (l *singleConnListener) Accept() (net.Conn, error) {
+	if l.conn == nil {
+		return nil, net.ErrClosed
+	}
+	conn := l.conn
+	l.conn = nil
+	return conn, nil
+}
+
+func (l *singleConnListener) Close() error {
+	return nil
+}
+
+func (l *singleConnListener) Addr() net.Addr {
+	return l.addr
+}
+
 func Run(ctx context.Context, args []string) error {
 	flags := flag.NewFlagSet("kite connector", flag.ContinueOnError)
 	klog.InitFlags(flags)
@@ -90,28 +112,20 @@ func Run(ctx context.Context, args []string) error {
 		Transport:     transport,
 		FlushInterval: -1,
 	}
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return fmt.Errorf("start Kubernetes API proxy: %w", err)
-	}
-	defer func() { _ = listener.Close() }()
-	proxyServer := &http.Server{
-		Handler:           proxy,
-		ReadHeaderTimeout: 10 * time.Second,
-	}
-	defer func() { _ = proxyServer.Close() }()
-	go func() {
-		if err := proxyServer.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			klog.Errorf("Kubernetes API proxy stopped: %v", err)
-		}
-	}()
-
 	headers := http.Header{"Authorization": []string{"Bearer " + *token}}
-	localDialer := func(dialCtx context.Context, network, address string) (net.Conn, error) {
+	localDialer := func(_ context.Context, network, address string) (net.Conn, error) {
 		if network != "tcp" || address != kubernetesAPITarget {
 			return nil, fmt.Errorf("unsupported tunnel target %s/%s", network, address)
 		}
-		return (&net.Dialer{}).DialContext(dialCtx, "tcp", listener.Addr().String())
+		proxyConn, tunnelConn := net.Pipe()
+		proxyServer := &http.Server{
+			Handler:           proxy,
+			ReadHeaderTimeout: 10 * time.Second,
+		}
+		go func() {
+			_ = proxyServer.Serve(&singleConnListener{conn: proxyConn, addr: proxyConn.LocalAddr()})
+		}()
+		return tunnelConn, nil
 	}
 	authorizer := func(network, address string) bool {
 		return network == "tcp" && address == kubernetesAPITarget
@@ -122,7 +136,7 @@ func Run(ctx context.Context, args []string) error {
 	for {
 		err := remotedialer.ConnectToProxyWithDialer(ctx, serverURL.String(), headers, authorizer, nil, localDialer, nil)
 		if ctx.Err() != nil {
-			return nil
+			return nil //nolint:nilerr // Context cancellation is a clean shutdown.
 		}
 		retryCount++
 		klog.Warningf("Kite connector connection lost (retry %d): %v", retryCount, err)

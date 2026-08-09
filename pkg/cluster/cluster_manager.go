@@ -293,6 +293,9 @@ func syncClusters(cm *ClusterManager, readyCh chan<- struct{}) error {
 		cm.mu.RLock()
 		current, currentExist := cm.clusters[cluster.Name]
 		cm.mu.RUnlock()
+		if cluster.Connector && !cluster.Enable {
+			cm.connectorManager.Remove(cluster.ID)
+		}
 		if cluster.Connector && !cm.connectorManager.Connected(cluster.ID) {
 			if currentExist {
 				cm.mu.Lock()
@@ -426,11 +429,20 @@ func (cm *ClusterManager) buildClientSet(cluster *model.Cluster) (*ClientSet, er
 	if !cluster.Connector {
 		return buildClientSet(cluster)
 	}
-	address, err := cm.connectorManager.Listen(cluster.ID)
+	address, token, caData, err := cm.connectorManager.Listen(cluster.ID)
 	if err != nil {
 		return nil, err
 	}
-	return newClientSet(cluster.Name, &rest.Config{Host: "http://" + address}, cluster.PrometheusURL)
+	return newClientSet(cluster.Name, &rest.Config{
+		Host:        "https://" + address,
+		BearerToken: token,
+		TLSClientConfig: rest.TLSClientConfig{
+			CAData: caData,
+		},
+		Proxy: func(*http.Request) (*url.URL, error) {
+			return nil, nil
+		},
+	}, cluster.PrometheusURL)
 }
 
 func (cm *ClusterManager) syncClusters() error {

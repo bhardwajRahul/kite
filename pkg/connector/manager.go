@@ -4,15 +4,24 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"io"
+	"math/big"
 	"net"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -46,19 +55,27 @@ type manifestGrant struct {
 	ExpiresAt      int64  `json:"exp"`
 }
 
+type localProxy struct {
+	listener  net.Listener
+	server    *http.Server
+	transport *http.Transport
+	token     string
+	caData    []byte
+}
+
 type Manager struct {
 	server    *remotedialer.Server
 	onChange  func()
 	jwtSecret string
 	mu        sync.Mutex
-	listeners map[string]net.Listener
+	proxies   map[string]*localProxy
 }
 
 func NewManager(onChange func()) *Manager {
 	m := &Manager{
 		onChange:  onChange,
 		jwtSecret: common.JwtSecret,
-		listeners: make(map[string]net.Listener),
+		proxies:   make(map[string]*localProxy),
 	}
 	m.server = remotedialer.New(m.authorize, remotedialer.DefaultErrorWriter)
 	return m
@@ -218,53 +235,118 @@ func (m *Manager) Connected(clusterID uint) bool {
 	return m.server.HasSession(strconv.FormatUint(uint64(clusterID), 10))
 }
 
-func (m *Manager) Listen(clusterID uint) (string, error) {
+func (m *Manager) Dialer(clusterID uint) func(context.Context, string, string) (net.Conn, error) {
+	clientKey := strconv.FormatUint(uint64(clusterID), 10)
+	dialer := m.server.Dialer(clientKey)
+	return func(ctx context.Context, network, _ string) (net.Conn, error) {
+		return dialer(ctx, network, kubernetesAPITarget)
+	}
+}
+
+func (m *Manager) Listen(clusterID uint) (string, string, []byte, error) {
 	clientKey := strconv.FormatUint(uint64(clusterID), 10)
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if listener, ok := m.listeners[clientKey]; ok {
-		return listener.Addr().String(), nil
+	cluster, err := model.GetClusterByID(clusterID)
+	if err != nil {
+		return "", "", nil, err
+	}
+	if !cluster.Connector || !cluster.Enable {
+		return "", "", nil, errors.New("connector cluster is unavailable")
+	}
+	if proxy, ok := m.proxies[clientKey]; ok {
+		return proxy.listener.Addr().String(), proxy.token, proxy.caData, nil
+	}
+
+	tokenBytes := make([]byte, connectorTokenSize)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return "", "", nil, err
+	}
+	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return "", "", nil, err
+	}
+	serialLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialLimit)
+	if err != nil {
+		return "", "", nil, err
+	}
+	serialNumber.SetBit(serialNumber, 0, 1)
+	now := time.Now()
+	certificateTemplate := &x509.Certificate{
+		SerialNumber:          serialNumber,
+		Subject:               pkix.Name{CommonName: "kite connector loopback"},
+		NotBefore:             now.Add(-time.Minute),
+		NotAfter:              now.AddDate(10, 0, 0),
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		IsCA:                  true,
+		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
+	}
+	certificateDER, err := x509.CreateCertificate(rand.Reader, certificateTemplate, certificateTemplate, publicKey, privateKey)
+	if err != nil {
+		return "", "", nil, err
+	}
+	token := base64.RawURLEncoding.EncodeToString(tokenBytes)
+	caData := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificateDER})
+	expectedAuthorization := []byte("Bearer " + token)
+	target := &url.URL{Scheme: "http", Host: kubernetesAPITarget}
+	transport := &http.Transport{DialContext: m.Dialer(clusterID)}
+	reverseProxy := &httputil.ReverseProxy{
+		Rewrite: func(req *httputil.ProxyRequest) {
+			req.SetURL(target)
+			req.Out.Host = target.Host
+			req.Out.Header.Del("Authorization")
+		},
+		Transport:     transport,
+		FlushInterval: -1,
+	}
+	server := &http.Server{
+		Handler: http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			if subtle.ConstantTimeCompare([]byte(req.Header.Get("Authorization")), expectedAuthorization) != 1 {
+				rw.Header().Set("WWW-Authenticate", "Bearer")
+				http.Error(rw, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			reverseProxy.ServeHTTP(rw, req)
+		}),
+		ReadHeaderTimeout: 10 * time.Second,
+		TLSConfig: &tls.Config{
+			Certificates: []tls.Certificate{{
+				Certificate: [][]byte{certificateDER},
+				PrivateKey:  privateKey,
+			}},
+			MinVersion: tls.VersionTLS13,
+		},
 	}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		return "", err
+		return "", "", nil, err
 	}
-	m.listeners[clientKey] = listener
-	go m.serveListener(clientKey, listener)
-	return listener.Addr().String(), nil
+	m.proxies[clientKey] = &localProxy{
+		listener:  listener,
+		server:    server,
+		transport: transport,
+		token:     token,
+		caData:    caData,
+	}
+	go func() {
+		if err := server.ServeTLS(listener, "", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			klog.Errorf("Connector proxy for cluster %s stopped: %v", clientKey, err)
+		}
+	}()
+	return listener.Addr().String(), token, caData, nil
 }
 
 func (m *Manager) Remove(clusterID uint) {
 	clientKey := strconv.FormatUint(uint64(clusterID), 10)
 	m.mu.Lock()
-	listener := m.listeners[clientKey]
-	delete(m.listeners, clientKey)
+	proxy := m.proxies[clientKey]
+	delete(m.proxies, clientKey)
 	m.mu.Unlock()
-	if listener != nil {
-		_ = listener.Close()
-	}
-}
-
-func (m *Manager) serveListener(clientKey string, listener net.Listener) {
-	for {
-		localConn, err := listener.Accept()
-		if err != nil {
-			return
-		}
-		go func() {
-			remoteConn, err := m.server.Dialer(clientKey)(context.Background(), "tcp", kubernetesAPITarget)
-			if err != nil {
-				_ = localConn.Close()
-				klog.V(2).Infof("Failed to open connector tunnel for cluster %s: %v", clientKey, err)
-				return
-			}
-			defer func() { _ = localConn.Close() }()
-			defer func() { _ = remoteConn.Close() }()
-			go func() {
-				_, _ = io.Copy(remoteConn, localConn)
-				_ = remoteConn.Close()
-			}()
-			_, _ = io.Copy(localConn, remoteConn)
-		}()
+	if proxy != nil {
+		_ = proxy.server.Close()
+		proxy.transport.CloseIdleConnections()
 	}
 }

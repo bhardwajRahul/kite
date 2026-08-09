@@ -24,13 +24,13 @@ Kite Connector 将连接方向反转：
 Kite Kubernetes Client
         │
         ▼
-Kite Server 本地回环端口
+Kite Server 认证 HTTPS 回环代理
         │
         ▼
 WebSocket 隧道（由 Connector 主动建立）
         │
         ▼
-Connector 本地 Kubernetes API 反向代理
+Connector 进程内 Kubernetes API 反向代理
         │
         ▼
 目标集群 kube-apiserver
@@ -40,8 +40,8 @@ Connector 本地 Kubernetes API 反向代理
 
 1. 在 Kite UI 中创建 Connector 集群时，Kite 生成一个随机连接 Token，只保存 Token 的 SHA-256 哈希，并在创建成功后展示一次原始 Token。
 2. Connector 使用 Token 连接 Kite Server 的 `/api/v1/connector/connect` WebSocket 接口。Kite 校验 Token 后，将连接绑定到对应集群。
-3. Kite Server 为该集群创建一个仅监听 `127.0.0.1` 的随机端口。现有 Kubernetes Client 连接这个端口，请求由隧道转发到 Connector。
-4. Connector 同样在本机创建一个仅监听 `127.0.0.1` 的 Kubernetes API 反向代理，并使用本地 ServiceAccount 或 kubeconfig 访问 kube-apiserver。
+3. Kite Server 为该集群创建一个仅监听随机 `127.0.0.1` 端口的认证 HTTPS 代理。其凭据和固定证书只保存在进程内存中，请求通过认证后才会经隧道转发到 Connector。
+4. Connector 通过进程内连接提供 Kubernetes API 反向代理，并使用本地 ServiceAccount 或 kubeconfig 访问 kube-apiserver。
 5. Connector 会移除来自 Kite 的 `Authorization` 和 `Impersonate-*` 请求头，再由本地 Kubernetes Transport 注入 Connector 自己的集群凭据。
 
 一条 Connector WebSocket 可以承载多个 Kubernetes API 连接。日志、Watch 和终端等流式请求也通过同一条隧道传输。
@@ -145,7 +145,7 @@ kite connector \
 ### 网络与可用性
 
 - Connector 只需要主动访问 Kite Server 和目标集群 kube-apiserver，不需要向集群外暴露新的监听端口。
-- Kite Server 和 Connector 进程都会创建仅绑定 `127.0.0.1` 的随机监听端口，这是内部转发链路的正常行为。
+- Kite Server 的内部代理使用仅绑定 `127.0.0.1` 的认证 HTTPS 端点；Connector 侧使用进程内连接。
 - Kite 前方的 Ingress 或反向代理必须支持 WebSocket Upgrade 和长连接。
 - 当前尚未实现跨多个 Kite Server 副本的 Connector Session 路由。使用 Connector 集群时，应先使用单个 Kite Server 副本。
 - 隧道断开会中止正在运行的日志、Watch 或终端连接。Connector 重连后，需要由客户端重新发起这些流式请求。
