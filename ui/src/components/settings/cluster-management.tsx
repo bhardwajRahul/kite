@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import {
   IconCopy,
   IconEdit,
@@ -34,6 +34,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -65,9 +67,15 @@ export function ClusterManagement() {
   const [deletingCluster, setDeletingCluster] = useState<Cluster | null>(null)
   const [connectorCommand, setConnectorCommand] = useState('')
   const [connectorYaml, setConnectorYaml] = useState('')
+  const [connectorYamlError, setConnectorYamlError] = useState<string | null>(
+    null
+  )
+  const [isConnectorYamlLoading, setIsConnectorYamlLoading] = useState(false)
+  const [connectorManifestURL, setConnectorManifestURL] = useState('')
   const [connectorCopyError, setConnectorCopyError] = useState<
     'command' | 'yaml' | null
   >(null)
+  const connectorYamlRequestID = useRef(0)
 
   const getClusterTypeBadge = useCallback(
     (cluster: Cluster) => {
@@ -233,7 +241,15 @@ export function ClusterManagement() {
 
   const createMutation = useMutation({
     mutationFn: createCluster,
-    onSuccess: ({ connectorServer, connectorToken }) => {
+    onSuccess: async ({
+      connectorServer,
+      connectorToken,
+      connectorManifestURL,
+    }: {
+      connectorServer?: string
+      connectorToken?: string
+      connectorManifestURL?: string
+    }) => {
       queryClient.invalidateQueries({ queryKey: ['cluster-list'] })
       toast.success(
         t('clusterManagement.messages.created', 'Cluster created successfully')
@@ -244,67 +260,42 @@ export function ClusterManagement() {
         setConnectorCommand(
           `kite connector --server='${connectorServer}' --token='${connectorToken}'`
         )
-        setConnectorYaml(`apiVersion: v1
-kind: Secret
-metadata:
-  name: kite-connector-token
-  namespace: kube-system
-type: Opaque
-stringData:
-  token: ${JSON.stringify(connectorToken)}
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: kite-connector
-  namespace: kube-system
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: kite-connector
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: cluster-admin
-subjects:
-  - kind: ServiceAccount
-    name: kite-connector
-    namespace: kube-system
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: kite-connector
-  namespace: kube-system
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: kite-connector
-  template:
-    metadata:
-      labels:
-        app.kubernetes.io/name: kite-connector
-    spec:
-      serviceAccountName: kite-connector
-      containers:
-        - name: connector
-          image: ghcr.io/kite-org/kite:latest
-          command:
-            - /app/kite
-          args:
-            - connector
-            - --server=$(KITE_SERVER)
-            - --token=$(CONNECTOR_TOKEN)
-          env:
-            - name: KITE_SERVER
-              value: ${JSON.stringify(connectorServer)}
-            - name: CONNECTOR_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: kite-connector-token
-                  key: token`)
+        setConnectorYaml('')
+        setConnectorYamlError(null)
+        setConnectorManifestURL(connectorManifestURL || '')
+        setIsConnectorYamlLoading(true)
+        const requestID = ++connectorYamlRequestID.current
+        try {
+          if (!connectorManifestURL) throw new Error('Missing manifest URL')
+          const manifestURL = new URL(
+            connectorManifestURL,
+            window.location.origin
+          )
+          const response = await fetch(
+            `${manifestURL.pathname}${manifestURL.search}`,
+            {
+              cache: 'no-store',
+            }
+          )
+          if (!response.ok) throw new Error(`HTTP ${response.status}`)
+          const yaml = await response.text()
+          if (requestID === connectorYamlRequestID.current) {
+            setConnectorYaml(yaml)
+          }
+        } catch {
+          if (requestID === connectorYamlRequestID.current) {
+            setConnectorYamlError(
+              t(
+                'clusterManagement.connector.loadYamlError',
+                'Failed to load YAML from the manifest URL.'
+              )
+            )
+          }
+        } finally {
+          if (requestID === connectorYamlRequestID.current) {
+            setIsConnectorYamlLoading(false)
+          }
+        }
       }
     },
     onError: (error: Error) => {
@@ -499,8 +490,12 @@ spec:
         open={!!connectorCommand}
         onOpenChange={(open) => {
           if (!open) {
+            connectorYamlRequestID.current += 1
             setConnectorCommand('')
             setConnectorYaml('')
+            setConnectorYamlError(null)
+            setIsConnectorYamlLoading(false)
+            setConnectorManifestURL('')
             setConnectorCopyError(null)
           }
         }}
@@ -569,34 +564,90 @@ spec:
               )}
             </TabsContent>
             <TabsContent value="yaml" className="space-y-2">
-              <Textarea
-                readOnly
-                className="h-96 resize-none font-mono text-xs"
-                aria-label={t(
-                  'clusterManagement.connector.yaml',
-                  'Kubernetes YAML'
+              {connectorManifestURL && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">
+                    {t(
+                      'clusterManagement.connector.applyUrl',
+                      'Apply directly with URL'
+                    )}
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      readOnly
+                      className="font-mono text-xs"
+                      value={`kubectl apply -f "${connectorManifestURL}"`}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      aria-label={t(
+                        'clusterManagement.connector.copyApplyCommand',
+                        'Copy apply command'
+                      )}
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(
+                            `kubectl apply -f "${connectorManifestURL}"`
+                          )
+                          setConnectorCopyError(null)
+                          toast.success(t('common.messages.copied', 'Copied'))
+                        } catch {
+                          setConnectorCopyError('yaml')
+                        }
+                      }}
+                    >
+                      <IconCopy className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">
+                  {t(
+                    'clusterManagement.connector.orUseYaml',
+                    'Or deploy with YAML'
+                  )}
+                </Label>
+                {isConnectorYamlLoading ? (
+                  <Skeleton className="h-96 w-full" />
+                ) : connectorYamlError ? (
+                  <p role="alert" className="text-sm text-destructive">
+                    {connectorYamlError}
+                  </p>
+                ) : (
+                  <Textarea
+                    readOnly
+                    className="h-96 resize-none font-mono text-xs"
+                    aria-label={t(
+                      'clusterManagement.connector.yaml',
+                      'Kubernetes YAML'
+                    )}
+                    value={connectorYaml}
+                  />
                 )}
-                value={connectorYaml}
-              />
-              <div className="flex justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={async () => {
-                    if (!connectorYaml) return
-                    try {
-                      await navigator.clipboard.writeText(connectorYaml)
-                      setConnectorCopyError(null)
-                      toast.success(t('common.messages.copied', 'Copied'))
-                    } catch {
-                      setConnectorCopyError('yaml')
-                    }
-                  }}
-                >
-                  <IconCopy className="size-4" />
-                  {t('clusterManagement.connector.copyYaml', 'Copy YAML')}
-                </Button>
               </div>
+              {connectorYaml && (
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(connectorYaml)
+                        setConnectorCopyError(null)
+                        toast.success(t('common.messages.copied', 'Copied'))
+                      } catch {
+                        setConnectorCopyError('yaml')
+                      }
+                    }}
+                  >
+                    <IconCopy className="size-4" />
+                    {t('clusterManagement.connector.copyYaml', 'Copy YAML')}
+                  </Button>
+                </div>
+              )}
               {connectorCopyError === 'yaml' && (
                 <p role="alert" className="text-sm text-destructive">
                   {t(
@@ -611,8 +662,12 @@ spec:
             <Button
               type="button"
               onClick={() => {
+                connectorYamlRequestID.current += 1
                 setConnectorCommand('')
                 setConnectorYaml('')
+                setConnectorYamlError(null)
+                setIsConnectorYamlLoading(false)
+                setConnectorManifestURL('')
                 setConnectorCopyError(null)
               }}
             >

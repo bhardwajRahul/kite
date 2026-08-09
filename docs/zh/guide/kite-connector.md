@@ -79,13 +79,27 @@ Kubernetes YAML 方式会创建以下资源：
 - 将该 ServiceAccount 绑定到 `cluster-admin` 的 ClusterRoleBinding。
 - `kube-system` 命名空间中的单副本 `kite-connector` Deployment。
 
-复制 YAML 并保存为文件后，可以直接部署：
+可以通过以下两种方式部署：
+
+**方式一：通过 URL 直接部署**
+
+创建成功后，Kite 会生成一个 Manifest 下载 URL，可以直接用 `kubectl apply` 部署：
+
+```bash
+kubectl apply -f 'https://kite.example.com/api/v1/connector/manifest?grant=<manifest-grant>'
+```
+
+该 URL 包含一个与 Connector Token 分离的加密 Manifest Grant。Grant 会在 10 分钟后过期，只要 JWT Secret 不变，Kite 重启后仍然有效。Grant 在过期前可以重复使用，因此请尽快执行该命令，或改用对话框中展示的 YAML。返回的 YAML 仍包含 Connector Token，必须按敏感凭据处理。
+
+**方式二：复制 YAML 手动部署**
+
+在连接信息对话框中复制 YAML 并保存为文件后，可以直接部署：
 
 ```bash
 kubectl apply -f kite-connector.yaml
 ```
 
-Deployment 使用 `ghcr.io/kite-org/kite:latest` 镜像，通过 Secret 将 Token 注入 Connector 进程。
+Deployment 使用的镜像由平台设置中的 **Connector Image** 配置，默认为 `ghcr.io/kite-org/kite:latest`。通过 Secret 将 Token 注入 Connector 进程。
 
 ### 2. 在目标集群中启动
 

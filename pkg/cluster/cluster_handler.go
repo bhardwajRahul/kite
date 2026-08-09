@@ -18,6 +18,26 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// connectorServerURL derives the Kite server URL from the request context,
+// using common.Host / X-Forwarded-Host / request host and common.Base.
+func connectorServerURL(c *gin.Context) string {
+	scheme := "http"
+	if c.Request.TLS != nil || strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https") {
+		scheme = "https"
+	}
+	host := strings.TrimSpace(common.Host)
+	if host == "" {
+		host = strings.TrimSpace(c.GetHeader("X-Forwarded-Host"))
+		if host == "" {
+			host = c.Request.Host
+		}
+	}
+	if !strings.HasPrefix(host, "http://") && !strings.HasPrefix(host, "https://") {
+		host = scheme + "://" + host
+	}
+	return fmt.Sprintf("%s%s", strings.TrimRight(host, "/"), common.Base)
+}
+
 func (cm *ClusterManager) GetClusters(c *gin.Context) {
 	clusters, errors, defaultContext := cm.snapshotState()
 	result := make([]common.ClusterInfo, 0, len(clusters))
@@ -128,9 +148,15 @@ func (cm *ClusterManager) CreateCluster(c *gin.Context) {
 
 	var connectorToken string
 	var connectorTokenHash string
+	var connectorManifestGrant string
 	if req.Connector {
 		var err error
 		connectorToken, connectorTokenHash, err = connector.NewToken()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		connectorManifestGrant, err = cm.connectorManager.CreateManifestGrant(connectorToken)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -161,22 +187,10 @@ func (cm *ClusterManager) CreateCluster(c *gin.Context) {
 		"message": "cluster created successfully",
 	}
 	if req.Connector {
-		scheme := "http"
-		if c.Request.TLS != nil || strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https") {
-			scheme = "https"
-		}
-		host := strings.TrimSpace(common.Host)
-		if host == "" {
-			host = strings.TrimSpace(c.GetHeader("X-Forwarded-Host"))
-			if host == "" {
-				host = c.Request.Host
-			}
-		}
-		if !strings.HasPrefix(host, "http://") && !strings.HasPrefix(host, "https://") {
-			host = scheme + "://" + host
-		}
-		result["connectorServer"] = fmt.Sprintf("%s%s", strings.TrimRight(host, "/"), common.Base)
+		serverURL := connectorServerURL(c)
+		result["connectorServer"] = serverURL
 		result["connectorToken"] = connectorToken
+		result["connectorManifestURL"] = fmt.Sprintf("%s/api/v1/connector/manifest?grant=%s", strings.TrimRight(serverURL, "/"), connectorManifestGrant)
 	}
 	c.JSON(http.StatusCreated, result)
 }
@@ -300,6 +314,32 @@ func (cm *ClusterManager) DeleteCluster(c *gin.Context) {
 
 func (cm *ClusterManager) ConnectConnector(c *gin.Context) {
 	cm.connectorManager.ServeHTTP(c.Writer, c.Request)
+}
+
+func (cm *ClusterManager) GetConnectorManifest(c *gin.Context) {
+	grant := strings.TrimSpace(c.Query("grant"))
+	token, err := cm.connectorManager.ResolveManifestGrant(grant)
+	if errors.Is(err, connector.ErrInvalidManifestGrant) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired manifest grant"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to validate manifest grant"})
+		return
+	}
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired manifest grant"})
+		return
+	}
+	serverURL := connectorServerURL(c)
+	image := model.DefaultGeneralConnectorImageValue()
+	if setting, err := model.GetGeneralSetting(); err == nil && setting != nil && setting.ConnectorImage != "" {
+		image = setting.ConnectorImage
+	}
+	manifest := connector.GenerateManifest(serverURL, token, image)
+	c.Header("Cache-Control", "no-store")
+	c.Header("Content-Disposition", `attachment; filename="kite-connector.yaml"`)
+	c.Data(http.StatusOK, "text/yaml; charset=utf-8", []byte(manifest))
 }
 
 func (cm *ClusterManager) ImportClustersFromKubeconfig(c *gin.Context) {
