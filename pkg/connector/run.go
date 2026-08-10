@@ -23,6 +23,22 @@ type singleConnListener struct {
 	addr net.Addr
 }
 
+// upgradeAwareTransport routes upgrade requests (SPDY/WebSocket) through an
+// HTTP/1.1-only transport, while letting regular requests use the standard
+// transport which may negotiate HTTP/2.  HTTP/2 rejects Upgrade headers, so
+// kubectl exec/attach/port-forward requests must go over HTTP/1.1.
+type upgradeAwareTransport struct {
+	normal    http.RoundTripper
+	http1Only http.RoundTripper
+}
+
+func (t *upgradeAwareTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.Header.Get("Upgrade") != "" {
+		return t.http1Only.RoundTrip(req)
+	}
+	return t.normal.RoundTrip(req)
+}
+
 func (l *singleConnListener) Accept() (net.Conn, error) {
 	if l.conn == nil {
 		return nil, net.ErrClosed
@@ -93,9 +109,24 @@ func Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return fmt.Errorf("parse Kubernetes API URL: %w", err)
 	}
-	transport, err := rest.TransportFor(config)
+
+	// Create two transports so we can conditionally force HTTP/1.1 only for
+	// upgrade requests (SPDY/WebSocket used by kubectl exec, attach,
+	// port-forward).  HTTP/2 does not allow Upgrade headers and would reject
+	// those requests, but regular requests benefit from HTTP/2 multiplexing.
+	normalTransport, err := rest.TransportFor(config)
 	if err != nil {
 		return fmt.Errorf("create Kubernetes API transport: %w", err)
+	}
+	h1Config := rest.CopyConfig(config)
+	h1Config.NextProtos = []string{"http/1.1"}
+	h1Transport, err := rest.TransportFor(h1Config)
+	if err != nil {
+		return fmt.Errorf("create HTTP/1.1 transport: %w", err)
+	}
+	transport := &upgradeAwareTransport{
+		normal:    normalTransport,
+		http1Only: h1Transport,
 	}
 
 	proxy := &httputil.ReverseProxy{
