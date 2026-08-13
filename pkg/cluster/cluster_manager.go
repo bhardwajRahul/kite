@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/zxh326/kite/pkg/connector"
+	"github.com/zxh326/kite/pkg/clusteragent"
 	"github.com/zxh326/kite/pkg/kube"
 	"github.com/zxh326/kite/pkg/model"
 	"github.com/zxh326/kite/pkg/prometheus"
@@ -30,15 +30,16 @@ type ClientSet struct {
 	DiscoveredPrometheusURL string
 	config                  string
 	prometheusURL           string
+	clusterAgentGeneration  uint64
 }
 
 type ClusterManager struct {
-	mu               sync.RWMutex
-	syncMu           sync.Mutex
-	clusters         map[string]*ClientSet
-	errors           map[string]string
-	defaultContext   string
-	connectorManager *connector.Manager
+	mu                  sync.RWMutex
+	syncMu              sync.Mutex
+	clusters            map[string]*ClientSet
+	errors              map[string]string
+	defaultContext      string
+	clusterAgentManager *clusteragent.Manager
 }
 
 const clusterStartupSyncTimeout = 10 * time.Second
@@ -235,7 +236,7 @@ func ImportClustersFromKubeconfig(kubeconfig *clientcmdapi.Config, setDefault bo
 			}
 			continue
 		}
-		if existingCluster.Connector {
+		if existingCluster.ClusterAgent {
 			continue
 		}
 		if err := model.UpdateCluster(existingCluster, map[string]interface{}{
@@ -293,10 +294,10 @@ func syncClusters(cm *ClusterManager, readyCh chan<- struct{}) error {
 		cm.mu.RLock()
 		current, currentExist := cm.clusters[cluster.Name]
 		cm.mu.RUnlock()
-		if cluster.Connector && !cluster.Enable {
-			cm.connectorManager.Remove(cluster.ID)
+		if cluster.ClusterAgent && !cluster.Enable {
+			cm.clusterAgentManager.Remove(cluster.ID)
 		}
-		if cluster.Connector && !cm.connectorManager.Connected(cluster.ID) {
+		if cluster.ClusterAgent && !cm.clusterAgentManager.Connected(cluster.ID) {
 			if currentExist {
 				cm.mu.Lock()
 				delete(cm.clusters, cluster.Name)
@@ -305,14 +306,18 @@ func syncClusters(cm *ClusterManager, readyCh chan<- struct{}) error {
 			}
 			cm.mu.Lock()
 			if cluster.Enable {
-				cm.errors[cluster.Name] = "waiting for connector connection"
+				cm.errors[cluster.Name] = "waiting for cluster agent connection"
 			} else {
 				delete(cm.errors, cluster.Name)
 			}
 			cm.mu.Unlock()
 			continue
 		}
-		if shouldUpdateCluster(current, cluster) {
+		clusterAgentConfigChanged := cluster.ClusterAgent && currentExist && current.clusterAgentGeneration != cm.clusterAgentManager.Generation(cluster.ID)
+		if clusterAgentConfigChanged {
+			klog.Infof("Cluster Agent transport configuration changed for cluster %s, updating", cluster.Name)
+		}
+		if clusterAgentConfigChanged || shouldUpdateCluster(current, cluster) {
 			if currentExist {
 				cm.mu.Lock()
 				delete(cm.clusters, cluster.Name)
@@ -426,23 +431,19 @@ func buildClientSet(cluster *model.Cluster) (*ClientSet, error) {
 }
 
 func (cm *ClusterManager) buildClientSet(cluster *model.Cluster) (*ClientSet, error) {
-	if !cluster.Connector {
+	if !cluster.ClusterAgent {
 		return buildClientSet(cluster)
 	}
-	address, token, caData, err := cm.connectorManager.Listen(cluster.ID)
+	config, generation, err := cm.clusterAgentManager.RESTConfig(cluster.ID)
 	if err != nil {
 		return nil, err
 	}
-	return newClientSet(cluster.Name, &rest.Config{
-		Host:        "https://" + address,
-		BearerToken: token,
-		TLSClientConfig: rest.TLSClientConfig{
-			CAData: caData,
-		},
-		Proxy: func(*http.Request) (*url.URL, error) {
-			return nil, nil
-		},
-	}, cluster.PrometheusURL)
+	clientSet, err := newClientSet(cluster.Name, config, cluster.PrometheusURL)
+	if err != nil {
+		return nil, err
+	}
+	clientSet.clusterAgentGeneration = generation
+	return clientSet, nil
 }
 
 func (cm *ClusterManager) syncClusters() error {
@@ -476,7 +477,7 @@ func NewClusterManager() (*ClusterManager, error) {
 	cm := new(ClusterManager)
 	cm.clusters = make(map[string]*ClientSet)
 	cm.errors = make(map[string]string)
-	cm.connectorManager = connector.NewManager(TriggerClusterSync)
+	cm.clusterAgentManager = clusteragent.NewManager(TriggerClusterSync)
 
 	initialReady := make(chan struct{}, 1)
 	go func() {
