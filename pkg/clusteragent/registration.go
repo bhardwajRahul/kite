@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/zxh326/kite/pkg/version"
 	"golang.org/x/crypto/nacl/box"
 	"k8s.io/client-go/rest"
 )
@@ -29,6 +30,7 @@ type clusterAgentRegistration struct {
 	ServerName    string `json:"serverName,omitempty"`
 	Insecure      bool   `json:"insecure,omitempty"`
 	Authorization string `json:"authorization,omitempty"`
+	AgentVersion  string `json:"agentVersion,omitempty"`
 }
 
 type registeredCluster struct {
@@ -326,6 +328,7 @@ func registrationFromConfig(config *rest.Config) (clusterAgentRegistration, erro
 		ServerName:    config.ServerName,
 		Insecure:      config.Insecure,
 		Authorization: authorization,
+		AgentVersion:  version.Version,
 	}, nil
 }
 

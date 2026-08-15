@@ -1,16 +1,19 @@
 package ai
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/zxh326/kite/pkg/cluster"
 	"github.com/zxh326/kite/pkg/common"
+	"github.com/zxh326/kite/pkg/kube"
 	pkgmodel "github.com/zxh326/kite/pkg/model"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -541,6 +544,35 @@ type execInPodOptions struct {
 	Timeout   time.Duration
 }
 
+const maxExecInPodOutputBytes = 5 * 1024 * 1024
+
+type execOutputLimit struct {
+	mu        sync.Mutex
+	remaining int
+	truncated bool
+}
+
+type execOutputWriter struct {
+	limit  *execOutputLimit
+	buffer bytes.Buffer
+}
+
+func (w *execOutputWriter) Write(p []byte) (int, error) {
+	w.limit.mu.Lock()
+	defer w.limit.mu.Unlock()
+
+	written := len(p)
+	if len(p) > w.limit.remaining {
+		p = p[:w.limit.remaining]
+		w.limit.truncated = true
+	}
+	if len(p) > 0 {
+		_, _ = w.buffer.Write(p)
+		w.limit.remaining -= len(p)
+	}
+	return written, nil
+}
+
 func parseExecInPodOptions(args map[string]interface{}) (execInPodOptions, error) {
 	name, err := getRequiredString(args, "name")
 	if err != nil {
@@ -599,7 +631,17 @@ func executeExecInPod(ctx context.Context, cs *cluster.ClientSet, args map[strin
 
 	execCtx, cancel := context.WithTimeout(ctx, options.Timeout)
 	defer cancel()
-	stdout, stderr, execErr := cs.K8sClient.ExecCommandBuffered(execCtx, options.Namespace, options.Name, options.Container, options.Command)
+	outputLimit := &execOutputLimit{remaining: maxExecInPodOutputBytes}
+	stdout := &execOutputWriter{limit: outputLimit}
+	stderr := &execOutputWriter{limit: outputLimit}
+	execErr := cs.K8sClient.ExecCommand(execCtx, kube.ExecOptions{
+		Namespace:     options.Namespace,
+		PodName:       options.Name,
+		ContainerName: options.Container,
+		Command:       options.Command,
+		Stdout:        stdout,
+		Stderr:        stderr,
+	})
 
 	commandJSON, err := json.Marshal(options.Command)
 	if err != nil {
@@ -611,17 +653,20 @@ func executeExecInPod(ctx context.Context, cs *cluster.ClientSet, args map[strin
 		fmt.Fprintf(&result, " (container: %s)", options.Container)
 	}
 	fmt.Fprintf(&result, ": %s (timeout: %s)\n", commandJSON, options.Timeout)
-	if stdout != "" {
-		fmt.Fprintf(&result, "\nstdout:\n%s\n", stdout)
+	if stdout.buffer.Len() > 0 {
+		fmt.Fprintf(&result, "\nstdout:\n%s\n", stdout.buffer.String())
 	}
-	if stderr != "" {
-		fmt.Fprintf(&result, "\nstderr:\n%s\n", stderr)
+	if stderr.buffer.Len() > 0 {
+		fmt.Fprintf(&result, "\nstderr:\n%s\n", stderr.buffer.String())
+	}
+	if outputLimit.truncated {
+		result.WriteString("\nOutput truncated at 5 MiB.\n")
 	}
 	if execErr != nil {
 		fmt.Fprintf(&result, "\nError: %v", execErr)
 		return result.String(), true
 	}
-	if stdout == "" && stderr == "" {
+	if stdout.buffer.Len() == 0 && stderr.buffer.Len() == 0 {
 		result.WriteString("\nCommand completed with no output.")
 	}
 	return result.String(), false

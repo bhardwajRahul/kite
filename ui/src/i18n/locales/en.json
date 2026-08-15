@@ -909,6 +909,7 @@
     },
     "clusterAgent": {
       "title": "Connect Cluster Agent",
+      "version": "Version: {{version}}",
       "description": "Choose a command or Kubernetes YAML to run inside the target cluster. This connection information is shown only once.",
       "command": "Command",
       "yaml": "Kubernetes YAML",

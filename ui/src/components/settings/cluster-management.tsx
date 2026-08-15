@@ -81,13 +81,25 @@ export function ClusterManagement() {
   const getClusterTypeBadge = useCallback(
     (cluster: Cluster) => {
       if (cluster.clusterAgent) {
-        return (
+        const badge = (
           <Badge
             variant="outline"
             className="bg-violet-50 text-violet-700 border-violet-200"
           >
             {t('clusterManagement.type.clusterAgent', 'Cluster Agent')}
           </Badge>
+        )
+        if (!cluster.clusterAgentVersion) return badge
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>{badge}</TooltipTrigger>
+            <TooltipContent>
+              {t('clusterManagement.clusterAgent.version', {
+                defaultValue: 'Version: {{version}}',
+                version: cluster.clusterAgentVersion,
+              })}
+            </TooltipContent>
+          </Tooltip>
         )
       }
       if (cluster.inCluster) {

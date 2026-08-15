@@ -239,6 +239,13 @@ func (m *Manager) Connected(clusterID uint) bool {
 	return m.server.HasSession(strconv.FormatUint(uint64(clusterID), 10))
 }
 
+func (m *Manager) Version(clusterID uint) string {
+	clientKey := strconv.FormatUint(uint64(clusterID), 10)
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.registrations[clientKey].registration.AgentVersion
+}
+
 func (m *Manager) Dialer(clusterID uint) func(context.Context, string, string) (net.Conn, error) {
 	clientKey := strconv.FormatUint(uint64(clusterID), 10)
 	return m.server.Dialer(clientKey)

@@ -91,6 +91,9 @@ func (cm *ClusterManager) GetClusterList(c *gin.Context) {
 			"prometheusURL": cluster.PrometheusURL,
 			"config":        "",
 		}
+		if cluster.ClusterAgent {
+			clusterInfo["clusterAgentVersion"] = cm.clusterAgentManager.Version(cluster.ID)
+		}
 
 		if clientSet, exists := clusterState[cluster.Name]; exists {
 			clusterInfo["version"] = clientSet.Version
