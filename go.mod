@@ -43,6 +43,8 @@ require (
 	sigs.k8s.io/yaml v1.6.0
 )
 
+replace github.com/rancher/remotedialer => github.com/zxh326/remotedialer v0.0.0-20260815085230-0ff84947e93f
+
 require (
 	github.com/go-openapi/swag/cmdutils v0.26.0 // indirect
 	github.com/go-openapi/swag/conv v0.26.0 // indirect

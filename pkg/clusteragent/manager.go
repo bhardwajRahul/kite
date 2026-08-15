@@ -1,7 +1,6 @@
 package clusteragent
 
 import (
-	"bufio"
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
@@ -38,32 +37,7 @@ var ErrInvalidManifestGrant = errors.New("invalid manifest grant")
 type requestStateKey struct{}
 
 type requestState struct {
-	authenticated        bool
-	clientKey            string
-	connectionGeneration uint64
-}
-
-type connectionTrackingResponseWriter struct {
-	http.ResponseWriter
-	manager    *Manager
-	state      *requestState
-	connection net.Conn
-}
-
-func (w *connectionTrackingResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	hijacker, ok := w.ResponseWriter.(http.Hijacker)
-	if !ok {
-		return nil, nil, http.ErrNotSupported
-	}
-	connection, readWriter, err := hijacker.Hijack()
-	if err != nil {
-		return nil, nil, err
-	}
-	w.connection = connection
-	if !w.manager.addConnection(w.state.clientKey, w.state.connectionGeneration, connection) {
-		_ = connection.Close()
-	}
-	return connection, readWriter, nil
+	authenticated bool
 }
 
 type manifestGrant struct {
@@ -72,22 +46,18 @@ type manifestGrant struct {
 }
 
 type Manager struct {
-	server                *remotedialer.Server
-	onChange              func()
-	jwtSecret             string
-	mu                    sync.RWMutex
-	registrations         map[string]registeredCluster
-	connections           map[string]map[net.Conn]struct{}
-	connectionGenerations map[string]uint64
+	server        *remotedialer.Server
+	onChange      func()
+	jwtSecret     string
+	mu            sync.RWMutex
+	registrations map[string]registeredCluster
 }
 
 func NewManager(onChange func()) *Manager {
 	m := &Manager{
-		onChange:              onChange,
-		jwtSecret:             common.JwtSecret,
-		registrations:         make(map[string]registeredCluster),
-		connections:           make(map[string]map[net.Conn]struct{}),
-		connectionGenerations: make(map[string]uint64),
+		onChange:      onChange,
+		jwtSecret:     common.JwtSecret,
+		registrations: make(map[string]registeredCluster),
 	}
 	m.server = remotedialer.New(m.authorize, remotedialer.DefaultErrorWriter)
 	return m
@@ -221,14 +191,10 @@ func (m *Manager) authorize(req *http.Request) (string, bool, error) {
 	if cluster == nil {
 		return "", false, nil
 	}
-	clientKey := strconv.FormatUint(uint64(cluster.ID), 10)
 	if state, ok := req.Context().Value(requestStateKey{}).(*requestState); ok {
 		state.authenticated = true
-		state.clientKey = clientKey
-		m.mu.RLock()
-		state.connectionGeneration = m.connectionGenerations[clientKey]
-		m.mu.RUnlock()
 	}
+	clientKey := strconv.FormatUint(uint64(cluster.ID), 10)
 	go func() {
 		ticker := time.NewTicker(50 * time.Millisecond)
 		defer ticker.Stop()
@@ -263,35 +229,9 @@ func authenticateClusterAgent(req *http.Request) (*model.Cluster, error) {
 func (m *Manager) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	state := &requestState{}
 	req = req.WithContext(context.WithValue(req.Context(), requestStateKey{}, state))
-	trackingWriter := &connectionTrackingResponseWriter{ResponseWriter: rw, manager: m, state: state}
-	m.server.ServeHTTP(trackingWriter, req)
-	if trackingWriter.connection != nil && state.clientKey != "" {
-		m.removeConnection(state.clientKey, trackingWriter.connection)
-	}
+	m.server.ServeHTTP(rw, req)
 	if state.authenticated {
 		m.onChange()
-	}
-}
-
-func (m *Manager) addConnection(clientKey string, generation uint64, connection net.Conn) bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.connectionGenerations[clientKey] != generation {
-		return false
-	}
-	if m.connections[clientKey] == nil {
-		m.connections[clientKey] = make(map[net.Conn]struct{})
-	}
-	m.connections[clientKey][connection] = struct{}{}
-	return true
-}
-
-func (m *Manager) removeConnection(clientKey string, connection net.Conn) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	delete(m.connections[clientKey], connection)
-	if len(m.connections[clientKey]) == 0 {
-		delete(m.connections, clientKey)
 	}
 }
 
@@ -313,13 +253,8 @@ func (m *Manager) Dialer(clusterID uint) func(context.Context, string, string) (
 
 func (m *Manager) Disconnect(clusterID uint) {
 	clientKey := strconv.FormatUint(uint64(clusterID), 10)
+	m.server.Disconnect(clientKey)
 	m.mu.Lock()
-	m.connectionGenerations[clientKey]++
-	connections := m.connections[clientKey]
-	delete(m.connections, clientKey)
 	delete(m.registrations, clientKey)
 	m.mu.Unlock()
-	for connection := range connections {
-		_ = connection.Close()
-	}
 }
