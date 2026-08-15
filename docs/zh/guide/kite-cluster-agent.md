@@ -125,7 +125,7 @@ kite cluster-agent \
 
 ### Token 安全
 
-- Cluster Agent Token 当前没有有效期，在对应集群存在且处于启用状态时可以持续用于重新连接。禁用集群会停止 Kite 使用该集群，并拒绝后续新建或重连的 Cluster Agent 握手，但不会主动关闭已经建立的 Cluster Agent Session；重新启用后原 Token 仍然有效。
+- Cluster Agent Token 当前没有有效期，在对应集群存在且处于启用状态时可以持续用于重新连接。禁用集群会主动关闭已经建立的 Cluster Agent Session，并拒绝后续重连；Cluster Agent 会持续重试，重新启用后可使用原 Token 自动恢复连接。
 - Kite 数据库只保存 Token 哈希，原始 Token 只在创建集群后展示一次，请立即妥善保存。
 - X25519 私钥使用 `KITE_ENCRYPT_KEY` 加密存储，公钥会固定在生成的 Cluster Agent 命令和 Deployment Manifest 中。
 - 当前没有单独的 Token 轮换接口。Token 泄露时，应删除并重新创建 Cluster Agent 集群，生成新 Token。

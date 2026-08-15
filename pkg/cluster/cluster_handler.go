@@ -315,7 +315,7 @@ func (cm *ClusterManager) DeleteCluster(c *gin.Context) {
 		return
 	}
 	if cluster.ClusterAgent {
-		cm.clusterAgentManager.Remove(cluster.ID)
+		cm.clusterAgentManager.Disconnect(cluster.ID)
 	}
 
 	TriggerClusterSync()

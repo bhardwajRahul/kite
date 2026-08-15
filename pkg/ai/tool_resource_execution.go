@@ -660,7 +660,7 @@ func executeExecInPod(ctx context.Context, cs *cluster.ClientSet, args map[strin
 		fmt.Fprintf(&result, "\nstderr:\n%s\n", stderr.buffer.String())
 	}
 	if outputLimit.truncated {
-		result.WriteString("\nOutput truncated at 5 MiB.\n")
+		result.WriteString("\nOutput truncated at 1 MiB.\n")
 	}
 	if execErr != nil {
 		fmt.Fprintf(&result, "\nError: %v", execErr)

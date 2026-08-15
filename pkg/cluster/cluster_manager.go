@@ -301,7 +301,7 @@ func syncClusters(cm *ClusterManager, readyCh chan<- struct{}) error {
 		current, currentExist := cm.clusters[cluster.Name]
 		cm.mu.RUnlock()
 		if cluster.ClusterAgent && !cluster.Enable {
-			cm.clusterAgentManager.Remove(cluster.ID)
+			cm.clusterAgentManager.Disconnect(cluster.ID)
 		}
 		if cluster.ClusterAgent && !cm.clusterAgentManager.Connected(cluster.ID) {
 			if currentExist {
