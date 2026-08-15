@@ -76,7 +76,9 @@ func toOpenAIAssistantMessage(message AgentMessage) openai.ChatCompletionMessage
 	}
 
 	param := openai.AssistantMessage(textBuilder.String())
-	param.OfAssistant.ToolCalls = toolCalls
+	if len(toolCalls) > 0 {
+		param.OfAssistant.ToolCalls = toolCalls
+	}
 	if thinkingBuilder.Len() > 0 {
 		param.OfAssistant.SetExtraFields(map[string]any{"reasoning_content": thinkingBuilder.String()})
 	}
