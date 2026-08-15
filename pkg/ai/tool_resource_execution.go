@@ -544,7 +544,7 @@ type execInPodOptions struct {
 	Timeout   time.Duration
 }
 
-const maxExecInPodOutputBytes = 5 * 1024 * 1024
+const maxExecInPodOutputBytes = 1 * 1024 * 1024
 
 type execOutputLimit struct {
 	mu        sync.Mutex
