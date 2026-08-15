@@ -152,10 +152,7 @@ function ClusterDialogContent({
                     {t('clusterManagement.type.inCluster', 'In-Cluster')}
                   </SelectItem>
                   <SelectItem value="clusterAgent">
-                    {t(
-                      'clusterManagement.type.clusterAgent',
-                      'Kite Cluster Agent'
-                    )}
+                    {t('clusterManagement.type.clusterAgent', 'Cluster Agent')}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -210,19 +207,17 @@ function ClusterDialogContent({
           </div>
         )}
 
-        {!formData.clusterAgent && (
-          <div className="space-y-2">
-            <Label htmlFor="prometheus-url">
-              {t('clusterManagement.dialog.prometheusUrl', 'Prometheus URL')}
-            </Label>
-            <Input
-              id="prometheus-url"
-              value={formData.prometheusURL}
-              onChange={(e) => handleChange('prometheusURL', e.target.value)}
-              type="url"
-            />
-          </div>
-        )}
+        <div className="space-y-2">
+          <Label htmlFor="prometheus-url">
+            {t('clusterManagement.dialog.prometheusUrl', 'Prometheus URL')}
+          </Label>
+          <Input
+            id="prometheus-url"
+            value={formData.prometheusURL}
+            onChange={(e) => handleChange('prometheusURL', e.target.value)}
+            type="url"
+          />
+        </div>
 
         {/* Cluster Status Controls */}
         <div className="space-y-4 border-t pt-4">
