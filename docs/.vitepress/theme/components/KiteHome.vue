@@ -12,6 +12,9 @@ import {
   IconTerminal2,
   IconWorld,
 } from "@tabler/icons-vue";
+import auditScreenshot from "../../../screenshots/audit.webp";
+import detailScreenshot from "../../../screenshots/detail.webp";
+import helmScreenshot from "../../../screenshots/helm.webp";
 import GitHubStarCount from "./GitHubStarCount.vue";
 
 const strengths = [
@@ -59,7 +62,7 @@ const productDetails = [
     description:
       "Inspect status, configuration, events, conditions, and related workloads in one place. Move from a symptom to the context you need without jumping between tools.",
     placeholder: "Resource details",
-    image: "/screenshots/detail.webp",
+    image: detailScreenshot,
     imageAlt:
       "Kite Kubernetes resource detail page showing workload status, pods, events, related resources, labels, and configuration",
     imageWidth: 3118,
@@ -73,7 +76,7 @@ const productDetails = [
     description:
       "Browse charts, manage repositories, and install, upgrade, or review releases alongside the Kubernetes resources they create.",
     placeholder: "Helm management",
-    image: "/screenshots/helm.webp",
+    image: helmScreenshot,
     imageAlt:
       "Kite Helm release page showing deployment status, related resources, release history, and configuration",
     imageWidth: 3118,
@@ -87,7 +90,7 @@ const productDetails = [
     description:
       "Keep access governed with role-based permissions and a clear audit trail of user activity and resource changes across your clusters.",
     placeholder: "Security audit",
-    image: "/screenshots/audit.webp",
+    image: auditScreenshot,
     imageAlt:
       "Kite audit log showing operators, Kubernetes resource changes, clusters, status, and reviewable diffs",
     imageWidth: 3118,
@@ -162,7 +165,7 @@ const productDetails = [
 
         <div class="hero__visual" aria-hidden="true">
           <img
-            src="/assets/cluster-atlas.png"
+            src="/assets/cluster-atlas-transparent.png"
             alt=""
             width="1254"
             height="1254"
