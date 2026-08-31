@@ -3,6 +3,7 @@ package helmutil
 import (
 	"bytes"
 	"fmt"
+	"net/http"
 	"net/url"
 	"path"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/registry"
 	repo "helm.sh/helm/v4/pkg/repo/v1"
+	"oras.land/oras-go/v2/registry/remote/auth"
 )
 
 const archiveCacheTTL = 10 * time.Minute
@@ -46,8 +48,26 @@ func LoadArchive(chartURL string, repository *model.HelmRepository) (*chart.Char
 	if err != nil || parsedURL.Scheme == "" {
 		return nil, fmt.Errorf("chartUrl must be an absolute URL")
 	}
-	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" && parsedURL.Scheme != "oci" {
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" && parsedURL.Scheme != registry.OCIScheme {
 		return nil, fmt.Errorf("unsupported chartUrl scheme")
+	}
+
+	var registryClient *registry.Client
+	if parsedURL.Scheme == registry.OCIScheme && !OCIRefHasTagOrDigest(parsedURL) {
+		// Cache the resolved version instead of a mutable tag-less reference.
+		registryClient, err = newRegistryClient(repository, chartURL)
+		if err != nil {
+			return nil, err
+		}
+		tags, err := registryClient.Tags(ociReference(chartURL))
+		if err != nil {
+			return nil, err
+		}
+		tag, err := registry.GetTagMatchingVersionOrConstraint(tags, "")
+		if err != nil {
+			return nil, err
+		}
+		chartURL = chartURL + ":" + tag
 	}
 
 	cacheKey := archiveCacheKey(chartURL)
@@ -69,30 +89,16 @@ func LoadArchive(chartURL string, repository *model.HelmRepository) (*chart.Char
 	options := []getter.Option{
 		getter.WithAcceptHeader("application/gzip,application/octet-stream"),
 	}
-	useRepositoryCredentials := repository != nil && repository.Username != "" && sameURLHost(repository.URL, chartURL)
+	useRepositoryCredentials := repositoryCredentialsApply(repository, chartURL)
 	if useRepositoryCredentials {
 		options = append(options, getter.WithBasicAuth(repository.Username, string(repository.Password)))
 	}
-
-	if parsedURL.Scheme == "oci" {
-		registryOptions := []registry.ClientOption{}
-		if useRepositoryCredentials {
-			registryOptions = append(registryOptions, registry.ClientOptBasicAuth(repository.Username, string(repository.Password)))
-		}
-		registryClient, err := registry.NewClient(registryOptions...)
-		if err != nil {
-			return nil, err
-		}
-		if !strings.Contains(path.Base(parsedURL.Path), ":") && !strings.Contains(parsedURL.Path, "@") {
-			tags, err := registryClient.Tags(strings.TrimPrefix(chartURL, "oci://"))
+	if parsedURL.Scheme == registry.OCIScheme {
+		if registryClient == nil {
+			registryClient, err = newRegistryClient(repository, chartURL)
 			if err != nil {
 				return nil, err
 			}
-			tag, err := registry.GetTagMatchingVersionOrConstraint(tags, "")
-			if err != nil {
-				return nil, err
-			}
-			chartURL = chartURL + ":" + tag
 		}
 		options = append(options, getter.WithRegistryClient(registryClient))
 	}
@@ -123,6 +129,58 @@ func LoadArchive(chartURL string, repository *model.HelmRepository) (*chart.Char
 	return loadedChart, nil
 }
 
+var (
+	registryHTTPClient = &http.Client{
+		Transport: registry.NewTransport(false),
+		Timeout:   time.Duration(getter.DefaultHTTPTimeout) * time.Second,
+	}
+	anonymousAuthorizer = newAnonymousAuthorizer()
+)
+
+func newAnonymousAuthorizer() auth.Client {
+	authorizer := auth.Client{
+		Client: registryHTTPClient,
+		Cache:  auth.NewCache(),
+	}
+	authorizer.SetUserAgent("kite")
+	return authorizer
+}
+
+func newRegistryClient(repository *model.HelmRepository, targetURL string) (*registry.Client, error) {
+	options := []registry.ClientOption{registry.ClientOptHTTPClient(registryHTTPClient)}
+	if repositoryCredentialsApply(repository, targetURL) {
+		options = append(options, registry.ClientOptBasicAuth(repository.Username, string(repository.Password)))
+	} else {
+		options = append(options, registry.ClientOptAuthorizer(anonymousAuthorizer))
+	}
+	return registry.NewClient(options...)
+}
+
+func repositoryCredentialsApply(repository *model.HelmRepository, targetURL string) bool {
+	return repository != nil && repository.Username != "" && sameURLHost(repository.URL, targetURL)
+}
+
+// OCIChartName returns the last path segment of an OCI repository URL.
+func OCIChartName(repositoryURL string) (string, error) {
+	parsedURL, err := url.Parse(repositoryURL)
+	if err != nil {
+		return "", err
+	}
+	name := path.Base(strings.Trim(parsedURL.Path, "/"))
+	if name == "" || name == "." {
+		return "", fmt.Errorf("oci repository URL must include a chart path, e.g. oci://registry.example.com/charts/app")
+	}
+	return name, nil
+}
+
+func OCIRefHasTagOrDigest(parsedURL *url.URL) bool {
+	return strings.Contains(path.Base(parsedURL.Path), ":") || strings.Contains(parsedURL.Path, "@")
+}
+
+func ociReference(chartURL string) string {
+	return strings.TrimPrefix(chartURL, registry.OCIScheme+"://")
+}
+
 func ResolveURL(baseURL, refURL string) string {
 	if refURL == "" {
 		return ""
@@ -150,13 +208,22 @@ func archiveCacheKey(chartURL string) string {
 	return chartURL
 }
 
-func ClearRepositoryArchiveCache(repository model.HelmRepository) {
-	cacheKey := repository.URL
-	cacheKeyPrefix := strings.TrimRight(cacheKey, "/") + "/"
+// MatchesRepositoryCacheKey matches paths and OCI tag references under a repository URL.
+func MatchesRepositoryCacheKey(repositoryURL, key string) bool {
+	if key == repositoryURL {
+		return true
+	}
+	trimmed := strings.TrimRight(repositoryURL, "/")
+	if strings.HasPrefix(key, trimmed+"/") {
+		return true
+	}
+	return registry.IsOCI(repositoryURL) && strings.HasPrefix(key, trimmed+":")
+}
 
+func ClearRepositoryArchiveCache(repository model.HelmRepository) {
 	archiveCacheMu.Lock()
 	for key := range archiveCache {
-		if key == cacheKey || strings.HasPrefix(key, cacheKeyPrefix) {
+		if MatchesRepositoryCacheKey(repository.URL, key) {
 			delete(archiveCache, key)
 		}
 	}

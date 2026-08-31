@@ -1,14 +1,27 @@
 package helm
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/zxh326/kite/pkg/helmutil"
 	"github.com/zxh326/kite/pkg/model"
+	"helm.sh/helm/v4/pkg/registry"
 )
+
+func validateOCIRepositoryURL(repositoryURL *url.URL) error {
+	if _, err := helmutil.OCIChartName(repositoryURL.String()); err != nil {
+		return err
+	}
+	if helmutil.OCIRefHasTagOrDigest(repositoryURL) {
+		return fmt.Errorf("oci repository URL must not include a tag or digest")
+	}
+	return nil
+}
 
 func (h *HelmChartHandler) ListRepositories(c *gin.Context) {
 	var repositories []model.HelmRepository
@@ -57,9 +70,17 @@ func (h *HelmChartHandler) CreateRepository(c *gin.Context) {
 		return
 	}
 	scheme := strings.ToLower(repositoryURL.Scheme)
-	if scheme != "http" && scheme != "https" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "repository URL must use http or https"})
+	if scheme != "http" && scheme != "https" && scheme != registry.OCIScheme {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "repository URL must use http, https, or oci"})
 		return
+	}
+	repository.URL = scheme + repository.URL[len(scheme):]
+	if scheme == registry.OCIScheme {
+		repository.URL = strings.TrimRight(repository.URL, "/")
+		if err := validateOCIRepositoryURL(repositoryURL); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 	}
 
 	var count int64

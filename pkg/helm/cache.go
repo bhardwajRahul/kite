@@ -2,14 +2,11 @@ package helm
 
 import (
 	"net/http"
-	"os"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/zxh326/kite/pkg/helmutil"
 	"github.com/zxh326/kite/pkg/model"
-	"helm.sh/helm/v4/pkg/getter"
 	repo "helm.sh/helm/v4/pkg/repo/v1"
 )
 
@@ -52,28 +49,7 @@ func (h *HelmChartHandler) loadRepositoryIndex(repository model.HelmRepository) 
 	}
 	h.indexCacheMu.Unlock()
 
-	entry := &repo.Entry{
-		Name:     repository.Name,
-		URL:      repository.URL,
-		Username: repository.Username,
-		Password: string(repository.Password),
-	}
-	chartRepository, err := repo.NewChartRepository(entry, getter.Getters())
-	if err != nil {
-		return nil, err
-	}
-	cacheDir, err := os.MkdirTemp("", "kite-helm-repo-*")
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = os.RemoveAll(cacheDir) }()
-	chartRepository.CachePath = cacheDir
-
-	indexPath, err := chartRepository.DownloadIndexFile()
-	if err != nil {
-		return nil, err
-	}
-	indexFile, err := repo.LoadIndexFile(indexPath)
+	indexFile, err := helmutil.LoadRepositoryCatalog(repository)
 	if err != nil {
 		return nil, err
 	}
@@ -115,6 +91,7 @@ func (h *HelmChartHandler) loadChartContent(repository model.HelmRepository, ent
 		Readme:    findReadme(loadedChart.Files),
 		Values:    values,
 		Templates: chartTemplates(loadedChart.Templates),
+		Metadata:  loadedChart.Metadata,
 	}
 
 	h.contentCacheMu.Lock()
@@ -144,9 +121,8 @@ func (h *HelmChartHandler) clearRepositoryCache(repository model.HelmRepository)
 	h.indexCacheMu.Unlock()
 
 	h.contentCacheMu.Lock()
-	cacheKeyPrefix := strings.TrimRight(cacheKey, "/") + "/"
 	for key := range h.contentCache {
-		if key == cacheKey || strings.HasPrefix(key, cacheKeyPrefix) {
+		if helmutil.MatchesRepositoryCacheKey(cacheKey, key) {
 			delete(h.contentCache, key)
 		}
 	}

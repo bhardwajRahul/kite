@@ -7,14 +7,11 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
 	semver "github.com/blang/semver/v4"
 	"github.com/zxh326/kite/pkg/model"
-	"helm.sh/helm/v4/pkg/getter"
-	repo "helm.sh/helm/v4/pkg/repo/v1"
 )
 
 const (
@@ -62,7 +59,7 @@ func latestRepositoryChartPackage(repositoryName, chartName string) (ChartPackag
 	if err := model.DB.Where("name = ?", repositoryName).First(&repository).Error; err != nil {
 		return ChartPackage{}, err
 	}
-	indexFile, err := LoadRepositoryIndex(repository)
+	indexFile, err := LoadRepositoryCatalog(repository)
 	if err != nil {
 		return ChartPackage{}, err
 	}
@@ -84,31 +81,6 @@ func latestRepositoryChartPackage(repositoryName, chartName string) (ChartPackag
 		URL:        ResolveURL(repository.URL, latest.URLs[0]),
 		Repository: &repository,
 	}, nil
-}
-
-func LoadRepositoryIndex(repository model.HelmRepository) (*repo.IndexFile, error) {
-	entry := &repo.Entry{
-		Name:     repository.Name,
-		URL:      repository.URL,
-		Username: repository.Username,
-		Password: string(repository.Password),
-	}
-	chartRepository, err := repo.NewChartRepository(entry, getter.Getters())
-	if err != nil {
-		return nil, err
-	}
-	cacheDir, err := os.MkdirTemp("", "kite-helm-repo-*")
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = os.RemoveAll(cacheDir) }()
-	chartRepository.CachePath = cacheDir
-
-	indexPath, err := chartRepository.DownloadIndexFile()
-	if err != nil {
-		return nil, err
-	}
-	return repo.LoadIndexFile(indexPath)
 }
 
 func latestArtifactHubChartPackage(ctx context.Context, repositoryName, chartName string) (ChartPackage, error) {
