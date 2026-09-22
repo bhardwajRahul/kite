@@ -22,7 +22,7 @@ helm install kite oci://ghcr.io/kite-org/charts/kite -n kite-system --create-nam
 
 ```bash
 # 添加 Kite 仓库
-helm repo add kite https://kite-org.github.io/kite/
+helm repo add kite https://charts.kitehq.dev
 
 # 更新仓库信息
 helm repo update

@@ -13,7 +13,7 @@ Kite 是一个轻量、开源的 Kubernetes 工作空间，面向多集群运维
 [![Downloads](https://img.shields.io/github/downloads/kite-org/kite/total?style=flat-square&logo=github&label=Downloads)](https://github.com/kite-org/kite/releases)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg?style=flat-square)](LICENSE)
 
-[**文档**](https://kite.zzde.me/zh/) · [**版本发布**](https://github.com/kite-org/kite/releases) · [**社区**](https://join.slack.com/t/kite-dashboard/shared_invite/zt-3cl9mccs7-eQZ1_t6IoTPHZkxXED1ceg)
+[**文档**](https://kitehq.dev/zh/) · [**版本发布**](https://github.com/kite-org/kite/releases) · [**社区**](https://join.slack.com/t/kite-dashboard/shared_invite/zt-3cl9mccs7-eQZ1_t6IoTPHZkxXED1ceg)
 
 [English](./README.md) · **中文**
 
@@ -65,7 +65,7 @@ kubectl port-forward --namespace kite-system svc/kite 8080:8080
 打开 [http://localhost:8080](http://localhost:8080)，创建首个管理员账户，并按照初始化流程连接集群。如果 Kite 运行在需要管理的集群中，选择 `in-cluster` 连接类型即可完成最简单的配置。
 
 > [!IMPORTANT]
-> Chart 默认值仅适合快速体验。用于生产环境前，请启用持久化存储或配置外部数据库、替换默认加密密钥，并检查 Chart 创建的集群级 RBAC 权限。详见[安装指南](https://kite.zzde.me/zh/guide/installation)和 [Chart Values](https://kite.zzde.me/zh/config/chart-values)。
+> Chart 默认值仅适合快速体验。用于生产环境前，请启用持久化存储或配置外部数据库、替换默认加密密钥，并检查 Chart 创建的集群级 RBAC 权限。详见[安装指南](https://kitehq.dev/zh/guide/installation)和 [Chart Values](https://kitehq.dev/zh/config/chart-values)。
 
 ## 其他安装方式
 
@@ -105,14 +105,14 @@ make build
 
 ## 文档
 
-| 主题 | 指南 |
-| --- | --- |
-| 安装与访问 | [安装指南](https://kite.zzde.me/zh/guide/installation) |
-| 用户、认证和权限 | [用户管理](https://kite.zzde.me/zh/config/user-management) · [RBAC](https://kite.zzde.me/zh/config/rbac-config) |
-| 监控 | [Prometheus 配置](https://kite.zzde.me/zh/config/prometheus-setup) |
-| 运维 | [Helm 管理](https://kite.zzde.me/zh/guide/helm-management) · [Kite Cluster Agent](https://kite.zzde.me/zh/guide/kite-cluster-agent) |
-| AI | [AI 助手](https://kite.zzde.me/zh/guide/ai-assistant) |
-| API | [API 文档](https://kite.zzde.me/zh/api/authentication) |
+| 主题             | 指南                                                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 安装与访问       | [安装指南](https://kitehq.dev/zh/guide/installation)                                                                            |
+| 用户、认证和权限 | [用户管理](https://kitehq.dev/zh/config/user-management) · [RBAC](https://kitehq.dev/zh/config/rbac-config)                     |
+| 监控             | [Prometheus 配置](https://kitehq.dev/zh/config/prometheus-setup)                                                                |
+| 运维             | [Helm 管理](https://kitehq.dev/zh/guide/helm-management) · [Kite Cluster Agent](https://kitehq.dev/zh/guide/kite-cluster-agent) |
+| AI               | [AI 助手](https://kitehq.dev/zh/guide/ai-assistant)                                                                             |
+| API              | [API 文档](https://kitehq.dev/zh/api/authentication)                                                                            |
 
 ## 社区
 

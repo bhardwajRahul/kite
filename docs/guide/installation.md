@@ -24,7 +24,7 @@ Or install from Helm repository:
 
 ```bash
 # Add Kite repository
-helm repo add kite https://kite-org.github.io/kite/
+helm repo add kite https://charts.kitehq.dev
 
 # Update repository information
 helm repo update

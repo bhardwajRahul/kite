@@ -1,219 +1,221 @@
-import { expect, test, type Locator, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
-const chartName = 'kite'
-const repositoryURL = 'https://kite-org.github.io/kite/'
-const installVersion = '0.10.0'
-const specifiedUpgradeVersion = '0.11.0'
-const namespace = 'default'
+const chartName = "kite";
+const repositoryURL = "https://charts.kitehq.dev";
+const installVersion = "0.10.0";
+const specifiedUpgradeVersion = "0.11.0";
+const namespace = "default";
 const baseValues = `replicaCount: 1
 anonymousUserEnabled: true
 podLabels:
   e2e-mode: base
-`
+`;
 const upgradedValues = `replicaCount: 1
 anonymousUserEnabled: true
 podLabels:
   e2e-mode: upgraded
-`
+`;
 
 async function fillMonacoEditor(
   page: Page,
   root: Locator,
   editorIndex: number,
-  value: string
+  value: string,
 ) {
-  const editor = root.locator('.monaco-editor').nth(editorIndex)
-  const editorText = editor.locator('.view-lines')
+  const editor = root.locator(".monaco-editor").nth(editorIndex);
+  const editorText = editor.locator(".view-lines");
 
-  await expect(editor).toBeVisible({ timeout: 60_000 })
-  const firstLine = value.trim().split('\n')[0]
+  await expect(editor).toBeVisible({ timeout: 60_000 });
+  const firstLine = value.trim().split("\n")[0];
 
-  await editorText.click({ position: { x: 10, y: 10 } })
-  await page.keyboard.press('Control+A')
-  await page.keyboard.press('Backspace')
-  await page.keyboard.press('Meta+A')
-  await page.keyboard.press('Backspace')
-  await page.keyboard.insertText(value)
-  await expect(editorText).toContainText(firstLine)
+  await editorText.click({ position: { x: 10, y: 10 } });
+  await page.keyboard.press("Control+A");
+  await page.keyboard.press("Backspace");
+  await page.keyboard.press("Meta+A");
+  await page.keyboard.press("Backspace");
+  await page.keyboard.insertText(value);
+  await expect(editorText).toContainText(firstLine);
 }
 
 function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 async function selectRepositoryFilter(page: Page, repositoryName: string) {
-  await page.locator('[data-slot="select-trigger"]').first().click()
-  await page.getByRole('option', { name: repositoryName }).click()
+  await page.locator('[data-slot="select-trigger"]').first().click();
+  await page.getByRole("option", { name: repositoryName }).click();
 }
 
 async function switchToRepositories(page: Page) {
-  await page.getByText('Repositories', { exact: true }).click()
+  await page.getByText("Repositories", { exact: true }).click();
 }
 
 async function selectUpgradeChart(
   page: Page,
   dialog: Locator,
-  repositoryName: string
+  repositoryName: string,
 ) {
-  const selectTriggers = dialog.locator('[data-slot="select-trigger"]')
+  const selectTriggers = dialog.locator('[data-slot="select-trigger"]');
   if ((await selectTriggers.count()) < 2) {
-    return
+    return;
   }
 
-  await selectTriggers.first().click()
+  await selectTriggers.first().click();
   await page
-    .getByRole('option', {
+    .getByRole("option", {
       name: new RegExp(`${escapeRegExp(repositoryName)}/${chartName}`),
     })
-    .click()
+    .click();
 }
 
 async function selectUpgradeVersion(
   page: Page,
   dialog: Locator,
-  version: string
+  version: string,
 ) {
-  const versionSelect = dialog.locator('[data-slot="select-trigger"]').last()
-  await expect(versionSelect).toBeVisible({ timeout: 60_000 })
-  await versionSelect.click()
+  const versionSelect = dialog.locator('[data-slot="select-trigger"]').last();
+  await expect(versionSelect).toBeVisible({ timeout: 60_000 });
+  await versionSelect.click();
   await page
-    .getByRole('option', {
+    .getByRole("option", {
       name: new RegExp(`^${escapeRegExp(version)}(?:\\s|$)`),
     })
-    .click()
+    .click();
 }
 
 async function expectReleaseSummary(
   page: Page,
   releaseName: string,
   version: string,
-  revision: number
+  revision: number,
 ) {
-  await expect(page.getByRole('heading', { name: releaseName })).toBeVisible({
+  await expect(page.getByRole("heading", { name: releaseName })).toBeVisible({
     timeout: 120_000,
-  })
-  await page.getByRole('tab', { name: 'Overview' }).click()
+  });
+  await page.getByRole("tab", { name: "Overview" }).click();
 
   const chartSummary = page
     .locator(`[title="${chartName}"]`)
-    .locator('xpath=..')
-  await expect(chartSummary).toContainText(version, { timeout: 120_000 })
+    .locator("xpath=..");
+  await expect(chartSummary).toContainText(version, { timeout: 120_000 });
 
   const revisionSummary = page
-    .getByText('Revision', { exact: true })
-    .locator('xpath=..')
+    .getByText("Revision", { exact: true })
+    .locator("xpath=..");
   await expect(revisionSummary).toContainText(String(revision), {
     timeout: 120_000,
-  })
+  });
 }
 
 async function expectReleaseValues(
   page: Page,
   expectedText: string,
-  absentText?: string
+  absentText?: string,
 ) {
-  await page.getByRole('tab', { name: 'Values' }).click()
-  const editorText = page.locator('.monaco-editor .view-lines').first()
-  await expect(editorText).toContainText('replicaCount:', { timeout: 60_000 })
-  await expect(editorText).toContainText(expectedText)
+  await page.getByRole("tab", { name: "Values" }).click();
+  const editorText = page.locator(".monaco-editor .view-lines").first();
+  await expect(editorText).toContainText("replicaCount:", { timeout: 60_000 });
+  await expect(editorText).toContainText(expectedText);
   if (absentText) {
-    await expect(editorText).not.toContainText(absentText)
+    await expect(editorText).not.toContainText(absentText);
   }
 }
 
 async function expectAppliedPodLabel(
   page: Page,
   releaseName: string,
-  expectedMode: string
+  expectedMode: string,
 ) {
   await expect
     .poll(
       async () => {
         const response = await page.request.get(
           `/api/v1/deployments/${namespace}?labelSelector=${encodeURIComponent(
-            `app.kubernetes.io/instance=${releaseName}`
-          )}`
-        )
+            `app.kubernetes.io/instance=${releaseName}`,
+          )}`,
+        );
         if (!response.ok()) {
-          return ''
+          return "";
         }
         const body = (await response.json()) as {
           items?: Array<{
             spec?: {
               template?: {
                 metadata?: {
-                  labels?: Record<string, string>
-                }
-              }
-            }
-          }>
-        }
+                  labels?: Record<string, string>;
+                };
+              };
+            };
+          }>;
+        };
         const labels = (body.items || []).map(
-          (item) => item.spec?.template?.metadata?.labels?.['e2e-mode'] || ''
-        )
+          (item) => item.spec?.template?.metadata?.labels?.["e2e-mode"] || "",
+        );
         if (!labels.length || labels.some((label) => !label)) {
-          return ''
+          return "";
         }
         return labels.every((label) => label === expectedMode)
           ? expectedMode
-          : labels.join(',')
+          : labels.join(",");
       },
-      { timeout: 60_000 }
+      { timeout: 60_000 },
     )
-    .toBe(expectedMode)
+    .toBe(expectedMode);
 }
 
 async function expectDryRunPreview(dialog: Locator) {
-  await expect(dialog.getByText('Dry run preview')).toBeVisible({
+  await expect(dialog.getByText("Dry run preview")).toBeVisible({
     timeout: 120_000,
-  })
+  });
   await expect(
-    dialog.getByText('No resources rendered by dry run.')
-  ).toBeHidden()
+    dialog.getByText("No resources rendered by dry run."),
+  ).toBeHidden();
 }
 
 async function deleteReleaseFromCurrentPage(page: Page, releaseName: string) {
-  await page.getByRole('button', { name: 'Delete' }).click()
-  const deleteDialog = page.getByRole('dialog').filter({ hasText: releaseName })
-  await expect(deleteDialog).toBeVisible()
-  await deleteDialog.getByPlaceholder(releaseName).fill(releaseName)
+  await page.getByRole("button", { name: "Delete" }).click();
+  const deleteDialog = page
+    .getByRole("dialog")
+    .filter({ hasText: releaseName });
+  await expect(deleteDialog).toBeVisible();
+  await deleteDialog.getByPlaceholder(releaseName).fill(releaseName);
   await expect(
-    deleteDialog.getByRole('button', { name: 'Delete' })
-  ).toBeEnabled()
-  await deleteDialog.getByRole('button', { name: 'Delete' }).click()
-  await page.waitForURL('**/helmrelease', { timeout: 120_000 })
+    deleteDialog.getByRole("button", { name: "Delete" }),
+  ).toBeEnabled();
+  await deleteDialog.getByRole("button", { name: "Delete" }).click();
+  await page.waitForURL("**/helmrelease", { timeout: 120_000 });
 }
 
 async function deleteRepositoryFromChartsPage(
   page: Page,
-  repositoryName: string
+  repositoryName: string,
 ) {
-  await page.goto('/charts')
-  await switchToRepositories(page)
-  await selectRepositoryFilter(page, repositoryName)
-  await page.getByRole('button', { name: 'Delete Repository' }).click()
+  await page.goto("/charts");
+  await switchToRepositories(page);
+  await selectRepositoryFilter(page, repositoryName);
+  await page.getByRole("button", { name: "Delete Repository" }).click();
 
   const deleteDialog = page
-    .getByRole('dialog')
-    .filter({ hasText: repositoryName })
-  await expect(deleteDialog).toBeVisible()
-  await deleteDialog.getByPlaceholder(repositoryName).fill(repositoryName)
+    .getByRole("dialog")
+    .filter({ hasText: repositoryName });
+  await expect(deleteDialog).toBeVisible();
+  await deleteDialog.getByPlaceholder(repositoryName).fill(repositoryName);
   await expect(
-    deleteDialog.getByRole('button', { name: 'Delete' })
-  ).toBeEnabled()
-  await deleteDialog.getByRole('button', { name: 'Delete' }).click()
-  await expect(deleteDialog).toBeHidden({ timeout: 60_000 })
+    deleteDialog.getByRole("button", { name: "Delete" }),
+  ).toBeEnabled();
+  await deleteDialog.getByRole("button", { name: "Delete" }).click();
+  await expect(deleteDialog).toBeHidden({ timeout: 60_000 });
   await expect(
-    page.getByRole('button', { name: 'Delete Repository' })
-  ).toBeHidden()
+    page.getByRole("button", { name: "Delete Repository" }),
+  ).toBeHidden();
 }
 
 async function cleanupReleaseFromUI(page: Page, releaseName: string) {
   try {
-    await page.goto(`/helmrelease/${namespace}/${releaseName}`)
-    const deleteButton = page.getByRole('button', { name: 'Delete' })
+    await page.goto(`/helmrelease/${namespace}/${releaseName}`);
+    const deleteButton = page.getByRole("button", { name: "Delete" });
     if (await deleteButton.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await deleteReleaseFromCurrentPage(page, releaseName)
+      await deleteReleaseFromCurrentPage(page, releaseName);
     }
   } catch {
     // Best-effort UI cleanup only.
@@ -222,201 +224,211 @@ async function cleanupReleaseFromUI(page: Page, releaseName: string) {
 
 async function cleanupRepositoryFromUI(page: Page, repositoryName: string) {
   try {
-    await page.goto('/charts')
-    await switchToRepositories(page)
-    await page.locator('[data-slot="select-trigger"]').first().click()
-    const option = page.getByRole('option', { name: repositoryName })
+    await page.goto("/charts");
+    await switchToRepositories(page);
+    await page.locator('[data-slot="select-trigger"]').first().click();
+    const option = page.getByRole("option", { name: repositoryName });
     if (!(await option.isVisible({ timeout: 5_000 }).catch(() => false))) {
-      await page.keyboard.press('Escape')
-      return
+      await page.keyboard.press("Escape");
+      return;
     }
-    await option.click()
-    await page.getByRole('button', { name: 'Delete Repository' }).click()
+    await option.click();
+    await page.getByRole("button", { name: "Delete Repository" }).click();
 
     const deleteDialog = page
-      .getByRole('dialog')
-      .filter({ hasText: repositoryName })
-    await deleteDialog.getByPlaceholder(repositoryName).fill(repositoryName)
-    await deleteDialog.getByRole('button', { name: 'Delete' }).click()
-    await expect(deleteDialog).toBeHidden({ timeout: 60_000 })
+      .getByRole("dialog")
+      .filter({ hasText: repositoryName });
+    await deleteDialog.getByPlaceholder(repositoryName).fill(repositoryName);
+    await deleteDialog.getByRole("button", { name: "Delete" }).click();
+    await expect(deleteDialog).toBeHidden({ timeout: 60_000 });
   } catch {
     // Best-effort UI cleanup only.
   }
 }
 
-test.describe('helm kite lifecycle', () => {
-  test.setTimeout(8 * 60 * 1000)
+test.describe("helm kite lifecycle", () => {
+  test.setTimeout(8 * 60 * 1000);
 
-  test('manages the kite repository and release lifecycle through the UI', async ({
+  test("manages the kite repository and release lifecycle through the UI", async ({
     page,
   }) => {
-    const suffix = Date.now().toString(36)
-    const repositoryName = `e2e-kite-${suffix}`
-    const releaseName = `e2e-kite-${suffix}`
-    let repositoryDeleted = false
-    let releaseDeleted = false
+    const suffix = Date.now().toString(36);
+    const repositoryName = `e2e-kite-${suffix}`;
+    const releaseName = `e2e-kite-${suffix}`;
+    let repositoryDeleted = false;
+    let releaseDeleted = false;
 
     try {
-      await page.goto('/charts')
-      const origin = new URL(page.url()).origin
+      await page.goto("/charts");
+      const origin = new URL(page.url()).origin;
       await page
         .context()
-        .grantPermissions(['clipboard-read', 'clipboard-write'], { origin })
+        .grantPermissions(["clipboard-read", "clipboard-write"], { origin });
 
-      await switchToRepositories(page)
-      await page.getByRole('button', { name: 'Add Repository' }).first().click()
+      await switchToRepositories(page);
+      await page
+        .getByRole("button", { name: "Add Repository" })
+        .first()
+        .click();
 
-      const addRepositoryDialog = page.getByRole('dialog', {
-        name: 'Add Repository',
-      })
-      await expect(addRepositoryDialog).toBeVisible()
+      const addRepositoryDialog = page.getByRole("dialog", {
+        name: "Add Repository",
+      });
+      await expect(addRepositoryDialog).toBeVisible();
       await addRepositoryDialog
-        .locator('#helm-repository-name')
-        .fill(repositoryName)
+        .locator("#helm-repository-name")
+        .fill(repositoryName);
       await addRepositoryDialog
-        .locator('#helm-repository-url')
-        .fill(repositoryURL)
-      await addRepositoryDialog.getByRole('button', { name: 'Add' }).click()
-      await expect(addRepositoryDialog).toBeHidden({ timeout: 60_000 })
+        .locator("#helm-repository-url")
+        .fill(repositoryURL);
+      await addRepositoryDialog.getByRole("button", { name: "Add" }).click();
+      await expect(addRepositoryDialog).toBeHidden({ timeout: 60_000 });
 
-      await selectRepositoryFilter(page, repositoryName)
-      await page.getByPlaceholder('Search charts...').fill(chartName)
-      const chartLink = page.getByRole('link', {
+      await selectRepositoryFilter(page, repositoryName);
+      await page.getByPlaceholder("Search charts...").fill(chartName);
+      const chartLink = page.getByRole("link", {
         name: chartName,
         exact: true,
-      })
-      await expect(chartLink).toBeVisible({ timeout: 60_000 })
+      });
+      await expect(chartLink).toBeVisible({ timeout: 60_000 });
 
-      await chartLink.click()
+      await chartLink.click();
       await page.waitForURL(
-        `**/charts/${encodeURIComponent(repositoryName)}/${chartName}`
-      )
+        `**/charts/${encodeURIComponent(repositoryName)}/${chartName}`,
+      );
       await page.goto(
-        `/charts/${encodeURIComponent(repositoryName)}/${encodeURIComponent(chartName)}?version=${encodeURIComponent(installVersion)}`
-      )
+        `/charts/${encodeURIComponent(repositoryName)}/${encodeURIComponent(chartName)}?version=${encodeURIComponent(installVersion)}`,
+      );
 
       await expect(
-        page.getByRole('heading', { name: chartName }).first()
-      ).toBeVisible({ timeout: 60_000 })
-      await expect(page.getByText(installVersion).first()).toBeVisible()
-      await page.getByRole('tab', { name: 'Values' }).click()
-      await expect(page.locator('.monaco-editor').first()).toBeVisible({
+        page.getByRole("heading", { name: chartName }).first(),
+      ).toBeVisible({ timeout: 60_000 });
+      await expect(page.getByText(installVersion).first()).toBeVisible();
+      await page.getByRole("tab", { name: "Values" }).click();
+      await expect(page.locator(".monaco-editor").first()).toBeVisible({
         timeout: 60_000,
-      })
-      await page.getByRole('tab', { name: 'Versions' }).click()
+      });
+      await page.getByRole("tab", { name: "Versions" }).click();
       await expect(
-        page.getByRole('link', { name: specifiedUpgradeVersion })
-      ).toBeVisible()
+        page.getByRole("link", { name: specifiedUpgradeVersion }),
+      ).toBeVisible();
 
-      await page.getByRole('button', { name: 'Install' }).click()
-      const installDialog = page.getByRole('dialog', { name: 'Install' })
-      await expect(installDialog).toBeVisible()
-      await installDialog.getByLabel('Release Name').fill(releaseName)
-      await fillMonacoEditor(page, installDialog, 1, baseValues)
+      await page.getByRole("button", { name: "Install" }).click();
+      const installDialog = page.getByRole("dialog", { name: "Install" });
+      await expect(installDialog).toBeVisible();
+      await installDialog.getByLabel("Release Name").fill(releaseName);
+      await fillMonacoEditor(page, installDialog, 1, baseValues);
       await expect(
-        installDialog.getByRole('button', { name: 'Dry Run' })
-      ).toBeEnabled({ timeout: 60_000 })
-      await installDialog.getByRole('button', { name: 'Dry Run' }).click()
-      await expectDryRunPreview(installDialog)
+        installDialog.getByRole("button", { name: "Dry Run" }),
+      ).toBeEnabled({ timeout: 60_000 });
+      await installDialog.getByRole("button", { name: "Dry Run" }).click();
+      await expectDryRunPreview(installDialog);
       await expect(
-        installDialog.getByRole('button', { name: 'Install' })
-      ).toBeEnabled({ timeout: 60_000 })
-      await installDialog.getByRole('button', { name: 'Install' }).click()
+        installDialog.getByRole("button", { name: "Install" }),
+      ).toBeEnabled({ timeout: 60_000 });
+      await installDialog.getByRole("button", { name: "Install" }).click();
 
       await page.waitForURL(
         `**/helmrelease/${namespace}/${encodeURIComponent(releaseName)}`,
-        { timeout: 120_000 }
-      )
-      await expectReleaseSummary(page, releaseName, installVersion, 1)
-      await expectReleaseValues(page, 'e2e-mode: base', 'e2e-mode: upgraded')
-      await expectAppliedPodLabel(page, releaseName, 'base')
+        { timeout: 120_000 },
+      );
+      await expectReleaseSummary(page, releaseName, installVersion, 1);
+      await expectReleaseValues(page, "e2e-mode: base", "e2e-mode: upgraded");
+      await expectAppliedPodLabel(page, releaseName, "base");
 
-      await page.getByRole('button', { name: 'Upgrade', exact: true }).click()
-      const customValuesUpgradeDialog = page.getByRole('dialog', {
-        name: 'Upgrade',
-      })
-      await expect(customValuesUpgradeDialog).toBeVisible()
-      await fillMonacoEditor(page, customValuesUpgradeDialog, 1, upgradedValues)
+      await page.getByRole("button", { name: "Upgrade", exact: true }).click();
+      const customValuesUpgradeDialog = page.getByRole("dialog", {
+        name: "Upgrade",
+      });
+      await expect(customValuesUpgradeDialog).toBeVisible();
+      await fillMonacoEditor(
+        page,
+        customValuesUpgradeDialog,
+        1,
+        upgradedValues,
+      );
       await expect(
-        customValuesUpgradeDialog.getByRole('button', { name: 'Dry Run' })
-      ).toBeEnabled({ timeout: 60_000 })
+        customValuesUpgradeDialog.getByRole("button", { name: "Dry Run" }),
+      ).toBeEnabled({ timeout: 60_000 });
       await customValuesUpgradeDialog
-        .getByRole('button', { name: 'Dry Run' })
-        .click()
-      await expectDryRunPreview(customValuesUpgradeDialog)
+        .getByRole("button", { name: "Dry Run" })
+        .click();
+      await expectDryRunPreview(customValuesUpgradeDialog);
       await expect(
-        customValuesUpgradeDialog.getByText('Changed').first()
-      ).toBeVisible()
+        customValuesUpgradeDialog.getByText("Changed").first(),
+      ).toBeVisible();
       await expect(
-        customValuesUpgradeDialog.getByRole('button', { name: 'Upgrade' })
-      ).toBeEnabled({ timeout: 60_000 })
+        customValuesUpgradeDialog.getByRole("button", { name: "Upgrade" }),
+      ).toBeEnabled({ timeout: 60_000 });
       await customValuesUpgradeDialog
-        .getByRole('button', { name: 'Upgrade' })
-        .click()
-      await expect(customValuesUpgradeDialog).toBeHidden({ timeout: 120_000 })
+        .getByRole("button", { name: "Upgrade" })
+        .click();
+      await expect(customValuesUpgradeDialog).toBeHidden({ timeout: 120_000 });
 
-      await page.reload()
-      await expectReleaseSummary(page, releaseName, installVersion, 2)
-      await expectReleaseValues(page, 'e2e-mode: upgraded')
-      await expectAppliedPodLabel(page, releaseName, 'upgraded')
+      await page.reload();
+      await expectReleaseSummary(page, releaseName, installVersion, 2);
+      await expectReleaseValues(page, "e2e-mode: upgraded");
+      await expectAppliedPodLabel(page, releaseName, "upgraded");
 
-      await page.getByRole('tab', { name: 'History' }).click()
+      await page.getByRole("tab", { name: "History" }).click();
       await expect(
-        page.getByRole('button', { name: 'Rollback' }).first()
-      ).toBeEnabled({ timeout: 60_000 })
-      await page.getByRole('button', { name: 'Rollback' }).first().click()
+        page.getByRole("button", { name: "Rollback" }).first(),
+      ).toBeEnabled({ timeout: 60_000 });
+      await page.getByRole("button", { name: "Rollback" }).first().click();
 
-      const rollbackDialog = page.getByRole('dialog', {
-        name: 'Rollback release?',
-      })
-      await expect(rollbackDialog).toBeVisible()
-      await rollbackDialog.getByRole('button', { name: 'Rollback' }).click()
-      await expect(rollbackDialog).toBeHidden({ timeout: 120_000 })
+      const rollbackDialog = page.getByRole("dialog", {
+        name: "Rollback release?",
+      });
+      await expect(rollbackDialog).toBeVisible();
+      await rollbackDialog.getByRole("button", { name: "Rollback" }).click();
+      await expect(rollbackDialog).toBeHidden({ timeout: 120_000 });
 
-      await page.reload()
-      await expectReleaseSummary(page, releaseName, installVersion, 3)
-      await expectReleaseValues(page, 'e2e-mode: base', 'e2e-mode: upgraded')
-      await expectAppliedPodLabel(page, releaseName, 'base')
+      await page.reload();
+      await expectReleaseSummary(page, releaseName, installVersion, 3);
+      await expectReleaseValues(page, "e2e-mode: base", "e2e-mode: upgraded");
+      await expectAppliedPodLabel(page, releaseName, "base");
 
-      await page.getByRole('button', { name: 'Upgrade', exact: true }).click()
-      const versionUpgradeDialog = page.getByRole('dialog', {
-        name: 'Upgrade',
-      })
-      await expect(versionUpgradeDialog).toBeVisible()
-      await selectUpgradeChart(page, versionUpgradeDialog, repositoryName)
+      await page.getByRole("button", { name: "Upgrade", exact: true }).click();
+      const versionUpgradeDialog = page.getByRole("dialog", {
+        name: "Upgrade",
+      });
+      await expect(versionUpgradeDialog).toBeVisible();
+      await selectUpgradeChart(page, versionUpgradeDialog, repositoryName);
       await selectUpgradeVersion(
         page,
         versionUpgradeDialog,
-        specifiedUpgradeVersion
-      )
-      await fillMonacoEditor(page, versionUpgradeDialog, 1, upgradedValues)
+        specifiedUpgradeVersion,
+      );
+      await fillMonacoEditor(page, versionUpgradeDialog, 1, upgradedValues);
       await expect(
-        versionUpgradeDialog.getByRole('button', { name: 'Upgrade' })
-      ).toBeEnabled({ timeout: 60_000 })
+        versionUpgradeDialog.getByRole("button", { name: "Upgrade" }),
+      ).toBeEnabled({ timeout: 60_000 });
       await versionUpgradeDialog
-        .getByRole('button', { name: 'Upgrade' })
-        .click()
-      await expect(versionUpgradeDialog).toBeHidden({ timeout: 180_000 })
+        .getByRole("button", { name: "Upgrade" })
+        .click();
+      await expect(versionUpgradeDialog).toBeHidden({ timeout: 180_000 });
 
-      await page.reload()
-      await expectReleaseSummary(page, releaseName, specifiedUpgradeVersion, 4)
-      await expectReleaseValues(page, 'e2e-mode: upgraded')
-      await expectAppliedPodLabel(page, releaseName, 'upgraded')
+      await page.reload();
+      await expectReleaseSummary(page, releaseName, specifiedUpgradeVersion, 4);
+      await expectReleaseValues(page, "e2e-mode: upgraded");
+      await expectAppliedPodLabel(page, releaseName, "upgraded");
 
-      await deleteReleaseFromCurrentPage(page, releaseName)
-      await page.getByPlaceholder(/^Search Helm Release/).fill(releaseName)
-      await expect(page.getByRole('link', { name: releaseName })).toHaveCount(0)
-      releaseDeleted = true
+      await deleteReleaseFromCurrentPage(page, releaseName);
+      await page.getByPlaceholder(/^Search Helm Release/).fill(releaseName);
+      await expect(page.getByRole("link", { name: releaseName })).toHaveCount(
+        0,
+      );
+      releaseDeleted = true;
 
-      await deleteRepositoryFromChartsPage(page, repositoryName)
-      repositoryDeleted = true
+      await deleteRepositoryFromChartsPage(page, repositoryName);
+      repositoryDeleted = true;
     } finally {
       if (!releaseDeleted) {
-        await cleanupReleaseFromUI(page, releaseName)
+        await cleanupReleaseFromUI(page, releaseName);
       }
       if (!repositoryDeleted) {
-        await cleanupRepositoryFromUI(page, repositoryName)
+        await cleanupRepositoryFromUI(page, repositoryName);
       }
     }
-  })
-})
+  });
+});

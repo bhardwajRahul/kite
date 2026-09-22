@@ -13,7 +13,7 @@ Kite is a lightweight, open-source Kubernetes workspace for multi-cluster operat
 [![Downloads](https://img.shields.io/github/downloads/kite-org/kite/total?style=flat-square&logo=github&label=Downloads)](https://github.com/kite-org/kite/releases)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg?style=flat-square)](LICENSE)
 
-[**Documentation**](https://kite.zzde.me) · [**Releases**](https://github.com/kite-org/kite/releases) · [**Community**](https://join.slack.com/t/kite-dashboard/shared_invite/zt-3cl9mccs7-eQZ1_t6IoTPHZkxXED1ceg)
+[**Documentation**](https://kitehq.dev) · [**Releases**](https://github.com/kite-org/kite/releases) · [**Community**](https://join.slack.com/t/kite-dashboard/shared_invite/zt-3cl9mccs7-eQZ1_t6IoTPHZkxXED1ceg)
 
 **English** · [中文](./README_zh.md)
 
@@ -65,7 +65,7 @@ kubectl port-forward --namespace kite-system svc/kite 8080:8080
 Open [http://localhost:8080](http://localhost:8080), create the first administrator, and follow the setup flow to connect a cluster. When Kite runs inside the cluster it manages, choose the `in-cluster` connection type for the simplest setup.
 
 > [!IMPORTANT]
-> The default chart values are intended for evaluation. Before using Kite in production, enable persistent storage or configure an external database, replace the default encryption key, and review the chart's cluster-wide RBAC permissions. See the [installation guide](https://kite.zzde.me/guide/installation) and [chart values](https://kite.zzde.me/config/chart-values).
+> The default chart values are intended for evaluation. Before using Kite in production, enable persistent storage or configure an external database, replace the default encryption key, and review the chart's cluster-wide RBAC permissions. See the [installation guide](https://kitehq.dev/guide/installation) and [chart values](https://kitehq.dev/config/chart-values).
 
 ## Other Installation Options
 
@@ -105,14 +105,14 @@ make build
 
 ## Documentation
 
-| Topic | Guide |
-| --- | --- |
-| Installation and exposure | [Installation](https://kite.zzde.me/guide/installation) |
-| Users, authentication, and permissions | [User management](https://kite.zzde.me/config/user-management) · [RBAC](https://kite.zzde.me/config/rbac-config) |
-| Monitoring | [Prometheus setup](https://kite.zzde.me/config/prometheus-setup) |
-| Operations | [Helm management](https://kite.zzde.me/guide/helm-management) · [Kite Cluster Agent](https://kite.zzde.me/guide/kite-cluster-agent) |
-| AI | [AI assistant](https://kite.zzde.me/guide/ai-assistant) |
-| API | [API documentation](https://kite.zzde.me/api/authentication) |
+| Topic                                  | Guide                                                                                                                           |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Installation and exposure              | [Installation](https://kitehq.dev/guide/installation)                                                                           |
+| Users, authentication, and permissions | [User management](https://kitehq.dev/config/user-management) · [RBAC](https://kitehq.dev/config/rbac-config)                    |
+| Monitoring                             | [Prometheus setup](https://kitehq.dev/config/prometheus-setup)                                                                  |
+| Operations                             | [Helm management](https://kitehq.dev/guide/helm-management) · [Kite Cluster Agent](https://kitehq.dev/guide/kite-cluster-agent) |
+| AI                                     | [AI assistant](https://kitehq.dev/guide/ai-assistant)                                                                           |
+| API                                    | [API documentation](https://kitehq.dev/api/authentication)                                                                      |
 
 ## Community
 

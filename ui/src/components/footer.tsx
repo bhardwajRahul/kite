@@ -10,7 +10,7 @@ export function Footer() {
             {t('login.footer', { year: new Date().getFullYear() })}
           </p>
           <div className="flex space-x-6 text-sm text-gray-500">
-            <a href="https://kite.zzde.me" target="_blank" className="app-link">
+            <a href="https://kitehq.dev" target="_blank" className="app-link">
               {t('login.documentation')}
             </a>
             <a

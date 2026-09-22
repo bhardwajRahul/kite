@@ -61,16 +61,16 @@ Available in Kite `v0.10.0` and later.
 
 See [Configuration File](./config-file) for the full config file format, usage examples, and reference.
 
-| Parameter               | Description                                                                    | Default |
-| ----------------------- | ------------------------------------------------------------------------------ | ------- |
-| `config.enabled`        | Enable configuration file mode                                                 | `false` |
-| `config.existingSecret` | Name of an existing Secret containing a `config.yaml` key. Recommended approach. | `""`    |
-| `config.superUser`      | Inline super user configuration (created on first startup only)                | `{}`    |
-| `config.clusters`       | Inline cluster configurations (when no existingSecret)                         | `[]`    |
-| `config.oauth`          | Inline OAuth provider configurations                                           | `[]`    |
-| `config.ldap`           | Inline LDAP configuration                                                      | `{}`    |
-| `config.rbac.roles`     | Inline RBAC role definitions                                                   | `[]`    |
-| `config.rbac.roleMapping` | Inline RBAC role mappings                                                    | `[]`    |
+| Parameter                 | Description                                                                      | Default |
+| ------------------------- | -------------------------------------------------------------------------------- | ------- |
+| `config.enabled`          | Enable configuration file mode                                                   | `false` |
+| `config.existingSecret`   | Name of an existing Secret containing a `config.yaml` key. Recommended approach. | `""`    |
+| `config.superUser`        | Inline super user configuration (created on first startup only)                  | `{}`    |
+| `config.clusters`         | Inline cluster configurations (when no existingSecret)                           | `[]`    |
+| `config.oauth`            | Inline OAuth provider configurations                                             | `[]`    |
+| `config.ldap`             | Inline LDAP configuration                                                        | `{}`    |
+| `config.rbac.roles`       | Inline RBAC role definitions                                                     | `[]`    |
+| `config.rbac.roleMapping` | Inline RBAC role mappings                                                        | `[]`    |
 
 ## Service Account Configuration
 
@@ -131,7 +131,7 @@ rbac:
 ```yaml
 ingress:
   hosts:
-    - host: kite.zzde.me
+    - host: kitehq.dev
       paths:
         - path: /
           pathType: ImplementationSpecific

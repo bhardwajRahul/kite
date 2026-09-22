@@ -12,7 +12,7 @@ import (
 func TestLoadRepositoryArchiveFromRepository(t *testing.T) {
 	repository := model.HelmRepository{
 		Name: "kite",
-		URL:  "https://kite-org.github.io/kite/",
+		URL:  "https://charts.kitehq.dev",
 	}
 	chartRepository, err := repo.NewChartRepository(&repo.Entry{
 		Name: repository.Name,
